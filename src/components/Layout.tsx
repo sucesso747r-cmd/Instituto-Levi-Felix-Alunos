@@ -1,0 +1,61 @@
+import { ReactNode } from 'react';
+import { LogOut } from 'lucide-react';
+import { useLocation } from 'wouter';
+
+interface LayoutProps {
+  children: ReactNode;
+  showLogout?: boolean;
+  onLogout?: () => void;
+}
+
+export default function Layout({ children, showLogout, onLogout }: LayoutProps) {
+  const [, setLocation] = useLocation();
+
+  const handleLogout = () => {
+    if (onLogout) onLogout();
+    setLocation('/');
+  };
+
+  return (
+    <div className="min-h-screen bg-black text-white flex flex-col items-center px-4 py-8">
+      {/* Logo */}
+      <div className="mb-4">
+        <img 
+          src="/logo.png" 
+          alt="Instituto Levi Felix Logo" 
+          className="w-32 h-auto"
+          referrerPolicy="no-referrer"
+          onError={(e) => {
+            e.currentTarget.style.display = 'none';
+            e.currentTarget.parentElement!.innerHTML = '<div class="w-24 h-24 bg-secondary flex items-center justify-center rounded-lg border border-white/10"><span class="text-xs text-white/50 uppercase font-bold tracking-tighter">Levi Felix</span></div>';
+          }}
+        />
+      </div>
+
+      <header className="text-center mb-10">
+        <h1 className="text-3xl font-bold tracking-tight uppercase">
+          Instituto <span className="text-primary">Levi Felix</span>
+        </h1>
+        <p className="text-white/60 text-sm mt-1">Área do Aluno</p>
+      </header>
+
+      <main className="w-full max-w-md flex-1 flex flex-col">
+        {children}
+      </main>
+
+      {showLogout && (
+        <button
+          onClick={handleLogout}
+          className="mt-8 flex items-center gap-2 text-white/40 hover:text-white transition-colors text-sm"
+        >
+          <LogOut size={16} />
+          Sair do sistema
+        </button>
+      )}
+
+      <footer className="mt-12 text-center text-white/20 text-[10px] uppercase tracking-widest">
+        &copy; {new Date().getFullYear()} Instituto Levi Felix - desenvolvido por <a href="https://i9star.com.br" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">i9star.com.br</a>
+      </footer>
+    </div>
+  );
+}
