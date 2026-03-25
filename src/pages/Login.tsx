@@ -9,9 +9,19 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
 
   const handleLogin = (e: FormEvent) => {
     e.preventDefault();
+    setError('');
+
+    // Check for password resets from Admin Panel
+    const resets = JSON.parse(localStorage.getItem('passwordResets') || '{}');
+    if (resets[email] && password !== resets[email]) {
+      setError('Senha incorreta para este usuário. Use a senha resetada pelo administrador.');
+      return;
+    }
+
     // For demo purposes, we'll simulate a login.
     // If email contains 'sensei', we'll log in as a sensei.
     if (email.includes('sensei')) {
@@ -83,6 +93,16 @@ export default function Login() {
               </button>
             </div>
           </div>
+
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="p-3 bg-primary/10 border border-primary/20 rounded-xl text-primary text-xs font-bold text-center"
+            >
+              {error}
+            </motion.div>
+          )}
 
           <div className="flex justify-end">
             <button

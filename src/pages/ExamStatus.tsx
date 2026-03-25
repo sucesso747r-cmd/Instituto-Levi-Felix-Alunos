@@ -3,7 +3,7 @@ import { useLocation } from 'wouter';
 import { ArrowLeft, CheckCircle2, XCircle, AlertCircle, Clock, Check, Award } from 'lucide-react';
 import { motion } from 'motion/react';
 import Layout from '../components/Layout';
-import { User, ExamStatus } from '../types';
+import { User, ExamStatus, ExamSettings } from '../types';
 
 export default function ExamStatusPage() {
   const [, setLocation] = useLocation();
@@ -29,6 +29,16 @@ export default function ExamStatusPage() {
       }
     } else {
       setLocation('/');
+    }
+
+    const storedSettings = localStorage.getItem('examSettings');
+    if (storedSettings) {
+      const settings: ExamSettings = JSON.parse(storedSettings);
+      setExamStatus(prev => ({
+        ...prev,
+        examDate: settings.examDate,
+        deadlineDate: settings.deadlineDate
+      }));
     }
   }, [setLocation]);
 

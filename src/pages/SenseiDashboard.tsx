@@ -3,12 +3,13 @@ import { useLocation } from 'wouter';
 import { ArrowLeft, CheckCircle2, XCircle, Users, Search, Filter, ShieldCheck } from 'lucide-react';
 import { motion } from 'motion/react';
 import Layout from '../components/Layout';
-import { User, StudentExamInfo } from '../types';
+import { User, StudentExamInfo, ExamSettings } from '../types';
 
 export default function SenseiDashboard() {
   const [, setLocation] = useLocation();
   const [user, setUser] = useState<User | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [examDate, setExamDate] = useState('15/06/2026');
 
   // Mock student data
     const [students, setStudents] = useState<StudentExamInfo[]>([
@@ -26,6 +27,12 @@ export default function SenseiDashboard() {
       setUser(JSON.parse(storedUser));
     } else {
       setLocation('/');
+    }
+
+    const storedSettings = localStorage.getItem('examSettings');
+    if (storedSettings) {
+      const settings: ExamSettings = JSON.parse(storedSettings);
+      setExamDate(settings.examDate);
     }
   }, [setLocation]);
 
@@ -90,7 +97,7 @@ export default function SenseiDashboard() {
               <ShieldCheck className="text-primary" size={24} />
             </h2>
             <p className="text-white/40 text-sm">
-              Gerencie a relação de alunos para o Exame de Faixa (15/06/2026)
+              Gerencie a relação de alunos para o Exame de Faixa ({examDate})
             </p>
           </div>
           

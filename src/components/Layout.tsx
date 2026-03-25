@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 import { LogOut } from 'lucide-react';
-import { useLocation } from 'wouter';
+import { useLocation, Link } from 'wouter';
 
 interface LayoutProps {
   children: ReactNode;
@@ -17,7 +17,7 @@ export default function Layout({ children, showLogout, onLogout }: LayoutProps) 
   };
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col items-center px-4 py-8">
+    <div className="min-h-screen bg-background text-white flex flex-col items-center px-4 py-8">
       {/* Logo */}
       <div className="mb-4">
         <img 
@@ -53,8 +53,15 @@ export default function Layout({ children, showLogout, onLogout }: LayoutProps) 
         </button>
       )}
 
-      <footer className="mt-12 text-center text-white/20 text-[10px] uppercase tracking-widest">
-        &copy; {new Date().getFullYear()} Instituto Levi Felix - desenvolvido por <a href="https://i9star.com.br" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">i9star.com.br</a>
+      <footer className="mt-12 text-center space-y-2">
+        <div className="flex items-center justify-center gap-4 text-white/20 text-[8px] uppercase tracking-[0.2em] font-bold">
+          <Link href="/terms" className="hover:text-white transition-colors">Termos de Uso</Link>
+          <span className="w-1 h-1 bg-white/10 rounded-full" />
+          <Link href="/privacy" className="hover:text-white transition-colors">Privacidade e LGPD</Link>
+        </div>
+        <p className="text-white/20 text-[10px] uppercase tracking-widest">
+          &copy; {new Date().getFullYear()} Instituto Levi Felix - desenvolvido por <a href="https://i9star.com.br" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">i9star.com.br</a>
+        </p>
       </footer>
     </div>
   );

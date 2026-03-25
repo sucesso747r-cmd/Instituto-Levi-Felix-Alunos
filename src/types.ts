@@ -26,3 +26,9 @@ export interface StudentExamInfo {
   isEligible: boolean;
   registrationStatus: 'S' | 'N' | 'PENDENCIA';
 }
+
+export interface ExamSettings {
+  isActive: boolean;
+  examDate: string;
+  deadlineDate: string;
+}

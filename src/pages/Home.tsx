@@ -3,11 +3,16 @@ import { useLocation } from 'wouter';
 import { BookOpen, Award, ShieldCheck, ArrowRight } from 'lucide-react';
 import { motion } from 'motion/react';
 import Layout from '../components/Layout';
-import { User } from '../types';
+import { User, ExamSettings } from '../types';
 
 export default function Home() {
   const [, setLocation] = useLocation();
   const [user, setUser] = useState<User | null>(null);
+  const [examSettings, setExamSettings] = useState<ExamSettings>({
+    isActive: true,
+    examDate: '15/06/2026',
+    deadlineDate: '10/06/2026'
+  });
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -15,6 +20,11 @@ export default function Home() {
       setUser(JSON.parse(storedUser));
     } else {
       setLocation('/');
+    }
+
+    const storedSettings = localStorage.getItem('examSettings');
+    if (storedSettings) {
+      setExamSettings(JSON.parse(storedSettings));
     }
   }, [setLocation]);
 
@@ -60,7 +70,7 @@ export default function Home() {
 
           {user.role === 'student' && (
             <button
-              onClick={() => setLocation('/exam-status')}
+              onClick={() => setLocation(examSettings.isActive ? '/exam-status' : '/exam-inactive')}
               className="group w-full bg-secondary/50 hover:bg-white/10 border border-white/10 rounded-2xl p-6 flex items-center gap-5 transition-all active:scale-[0.98]"
             >
               <div className="w-14 h-14 bg-primary/10 rounded-xl flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all">
@@ -68,7 +78,11 @@ export default function Home() {
               </div>
               <div className="flex-1 text-left">
                 <h3 className="font-bold text-lg">Exame de Faixa</h3>
-                <p className="text-white/40 text-sm">Confira seu status e inscreva-se para o próximo exame.</p>
+                <p className="text-white/40 text-sm">
+                  {examSettings.isActive 
+                    ? 'Confira seu status e inscreva-se para o próximo exame.' 
+                    : 'Período de exame indisponível no momento.'}
+                </p>
               </div>
               <ArrowRight size={20} className="text-white/20 group-hover:text-white transition-colors" />
             </button>

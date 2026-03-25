@@ -3,10 +3,15 @@
 
 @theme {
   --font-sans: "Poppins", ui-sans-serif, system-ui, sans-serif;
-  --color-primary: #FF0000; /* Red */
+  --color-primary: #db2e2e; /* New Red */
   --color-secondary: #333333; /* Gray */
-  --color-background: #000000; /* Black */
+  --color-background: #171819; /* New Dark Background */
   --color-foreground: #FFFFFF; /* White */
+
+  /* Override Tailwind's red to match the new brand red */
+  --color-red-500: #db2e2e;
+  --color-red-600: #c22929;
+  --color-red-700: #a82424;
 }
 
 @layer base {

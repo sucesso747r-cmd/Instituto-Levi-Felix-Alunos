@@ -68,7 +68,7 @@ export default function ExamRegistration() {
             
             <div className="p-4 bg-white/5 border border-white/10 rounded-xl space-y-3">
               <p className="text-xs text-white/40 uppercase font-bold">Chave PIX (Celular)</p>
-              <div className="flex items-center justify-between bg-black/40 p-3 rounded-lg border border-white/5">
+              <div className="flex items-center justify-between bg-background/40 p-3 rounded-lg border border-white/5">
                 <span className="font-mono text-lg">{pixKey}</span>
                 <button
                   onClick={copyToClipboard}
