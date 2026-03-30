@@ -1,4 +1,7 @@
 import { Route, Switch } from 'wouter';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from './lib/queryClient';
+import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 import Home from './pages/Home';
 import ExamStatus from './pages/ExamStatus';
@@ -11,21 +14,43 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 
 export default function App() {
   return (
-    <Switch>
-      <Route path="/" component={Login} />
-      <Route path="/home" component={Home} />
-      <Route path="/exam-status" component={ExamStatus} />
-      <Route path="/exam-registration" component={ExamRegistration} />
-      <Route path="/sensei-dashboard" component={SenseiDashboard} />
-      <Route path="/admin" component={Admin} />
-      <Route path="/exam-inactive" component={ExamInactive} />
-      <Route path="/terms" component={TermsOfUse} />
-      <Route path="/privacy" component={PrivacyPolicy} />
-      
-      {/* Fallback to login */}
-      <Route>
-        <Login />
-      </Route>
-    </Switch>
+    <QueryClientProvider client={queryClient}>
+      <Switch>
+        <Route path="/" component={Login} />
+        <Route path="/home">
+          <ProtectedRoute>
+            <Home />
+          </ProtectedRoute>
+        </Route>
+        <Route path="/exam-status">
+          <ProtectedRoute>
+            <ExamStatus />
+          </ProtectedRoute>
+        </Route>
+        <Route path="/exam-registration">
+          <ProtectedRoute>
+            <ExamRegistration />
+          </ProtectedRoute>
+        </Route>
+        <Route path="/sensei-dashboard">
+          <ProtectedRoute requireSensei>
+            <SenseiDashboard />
+          </ProtectedRoute>
+        </Route>
+        <Route path="/admin" component={Admin} />
+        <Route path="/exam-inactive">
+          <ProtectedRoute>
+            <ExamInactive />
+          </ProtectedRoute>
+        </Route>
+        <Route path="/terms" component={TermsOfUse} />
+        <Route path="/privacy" component={PrivacyPolicy} />
+
+        {/* Fallback to login */}
+        <Route>
+          <Login />
+        </Route>
+      </Switch>
+    </QueryClientProvider>
   );
 }

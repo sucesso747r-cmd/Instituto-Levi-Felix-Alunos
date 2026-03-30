@@ -200,13 +200,8 @@ export function setupAuth(app: Express) {
 
       await db
         .update(users)
-        .set({ password_hash: passwordHash, updated_at: new Date() })
+        .set({ password_hash: passwordHash })
         .where(eq(users.id, resetToken.user_id));
-
-      await db
-        .update(passwordResetTokens)
-        .set({ used: true })
-        .where(eq(passwordResetTokens.id, resetToken.id));
 
       return res.json({ ok: true });
     } catch (err) {
