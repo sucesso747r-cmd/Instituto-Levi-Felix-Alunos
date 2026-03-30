@@ -1,12 +1,40 @@
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, FormEvent } from 'react';
 import { useLocation } from 'wouter';
-import { Lock, Save, ArrowLeft, Settings, Calendar, Clock, ToggleLeft, ToggleRight, CheckCircle2, Info, Mail, User, ShieldAlert } from 'lucide-react';
+import { Lock, Save, ArrowLeft, Settings, Calendar, Clock, ToggleLeft, ToggleRight, CheckCircle2, Info, Mail, User, ShieldAlert, Users, ClipboardList } from 'lucide-react';
 import { motion } from 'motion/react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Layout from '../components/Layout';
-import { ExamSettings } from '../types';
+import { apiRequest } from '../lib/queryClient';
+
+interface ExamPeriod {
+  id: number;
+  active: boolean;
+  exam_date: string;
+  registration_deadline: string;
+  exam_price: string;
+  pix_key: string;
+}
+
+interface AdminUser {
+  id: number;
+  student_name: string;
+  email: string;
+  current_belt: string;
+  is_sensei: boolean;
+}
+
+interface Registration {
+  id: number;
+  student_name: string;
+  target_belt: string;
+  payment_status: string;
+}
 
 export default function Admin() {
   const [, setLocation] = useLocation();
+  const qc = useQueryClient();
+
+  // Auth state
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -17,57 +45,149 @@ export default function Admin() {
   const [resetSuccess, setResetSuccess] = useState(false);
   const [resetError, setResetError] = useState('');
 
-  const [settings, setSettings] = useState<ExamSettings>({
-    isActive: true,
-    examDate: '15/06/2026',
-    deadlineDate: '10/06/2026'
+  // Per-user reset success map
+  const [userResetSuccess, setUserResetSuccess] = useState<Record<number, boolean>>({});
+
+  // Exam period form state
+  const [formActive, setFormActive] = useState(true);
+  const [formExamDate, setFormExamDate] = useState('');
+  const [formDeadline, setFormDeadline] = useState('');
+  const [formPrice, setFormPrice] = useState('');
+  const [formPixKey, setFormPixKey] = useState('');
+
+  // Fetch exam period
+  const { data: examPeriod } = useQuery<ExamPeriod | null>({
+    queryKey: ['admin', 'exam-period'],
+    enabled: isLoggedIn,
+    queryFn: async () => {
+      const res = await apiRequest('/api/admin/exam-period');
+      return res.json();
+    },
+    select: (data) => {
+      // Populate form on first load
+      if (data) {
+        setFormActive(data.active);
+        setFormExamDate(data.exam_date ?? '');
+        setFormDeadline(data.registration_deadline ?? '');
+        setFormPrice(data.exam_price ?? '');
+        setFormPixKey(data.pix_key ?? '');
+      }
+      return data;
+    },
   });
 
-  useEffect(() => {
-    const storedSettings = localStorage.getItem('examSettings');
-    if (storedSettings) {
-      setSettings(JSON.parse(storedSettings));
-    }
-    
-    const adminSession = sessionStorage.getItem('adminSession');
-    if (adminSession === 'true') {
-      setIsLoggedIn(true);
-    }
-  }, []);
+  // Fetch users
+  const { data: users = [] } = useQuery<AdminUser[]>({
+    queryKey: ['admin', 'users'],
+    enabled: isLoggedIn,
+    queryFn: async () => {
+      const res = await apiRequest('/api/admin/users');
+      return res.json();
+    },
+  });
 
-  const handleLogin = (e: FormEvent) => {
+  // Fetch registrations
+  const { data: registrations = [] } = useQuery<Registration[]>({
+    queryKey: ['admin', 'registrations'],
+    enabled: isLoggedIn,
+    queryFn: async () => {
+      const res = await apiRequest('/api/admin/registrations');
+      return res.json();
+    },
+  });
+
+  // Save exam period mutation
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest('/api/admin/exam-period', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          active: formActive,
+          examDate: formExamDate,
+          registrationDeadline: formDeadline,
+          examPrice: formPrice,
+          pixKey: formPixKey,
+        }),
+      });
+    },
+    onSuccess: () => {
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+      qc.invalidateQueries({ queryKey: ['admin', 'exam-period'] });
+    },
+  });
+
+  // Confirm payment mutation
+  const confirmPaymentMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest(`/api/admin/registrations/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentStatus: 'CONFIRMADO' }),
+      });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'registrations'] });
+    },
+  });
+
+  const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
-    // Pre-defined password
-    if (password === 'admin123') {
+    try {
+      await apiRequest('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
       setIsLoggedIn(true);
-      sessionStorage.setItem('adminSession', 'true');
       setError('');
-    } else {
-      setError('Senha incorreta');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Senha incorreta');
     }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await apiRequest('/api/admin/logout', { method: 'POST' });
+    } catch {
+      // ignore
+    }
+    setIsLoggedIn(false);
   };
 
   const handleSave = (e: FormEvent) => {
     e.preventDefault();
-    localStorage.setItem('examSettings', JSON.stringify(settings));
-    setSuccess(true);
-    setTimeout(() => setSuccess(false), 3000);
+    saveMutation.mutate();
   };
 
-  const handleResetPassword = (e: FormEvent) => {
+  const handleResetPassword = async (e: FormEvent) => {
     e.preventDefault();
     if (!resetEmail) return;
+    const user = users.find((u) => u.email === resetEmail);
+    if (!user) {
+      setResetError('Usuário não encontrado');
+      return;
+    }
+    try {
+      await apiRequest(`/api/admin/users/${user.id}/reset-password`, { method: 'POST' });
+      setResetSuccess(true);
+      setResetEmail('');
+      setResetError('');
+      setTimeout(() => setResetSuccess(false), 5000);
+    } catch (err) {
+      setResetError(err instanceof Error ? err.message : 'Erro ao resetar senha');
+    }
+  };
 
-    // In a real app, this would call an API.
-    // For this demo, we'll store the reset in localStorage.
-    const resets = JSON.parse(localStorage.getItem('passwordResets') || '{}');
-    resets[resetEmail] = 'A123456b!';
-    localStorage.setItem('passwordResets', JSON.stringify(resets));
-
-    setResetSuccess(true);
-    setResetEmail('');
-    setResetError('');
-    setTimeout(() => setResetSuccess(false), 5000);
+  const handleUserResetPassword = async (userId: number) => {
+    try {
+      await apiRequest(`/api/admin/users/${userId}/reset-password`, { method: 'POST' });
+      setUserResetSuccess((prev) => ({ ...prev, [userId]: true }));
+      setTimeout(() => setUserResetSuccess((prev) => ({ ...prev, [userId]: false })), 3000);
+    } catch {
+      // silently ignore
+    }
   };
 
   if (!isLoggedIn) {
@@ -119,7 +239,7 @@ export default function Admin() {
   }
 
   return (
-    <Layout showLogout onLogout={() => sessionStorage.removeItem('adminSession')}>
+    <Layout showLogout onLogout={handleLogout}>
       <motion.div
         initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
@@ -137,6 +257,7 @@ export default function Admin() {
           </div>
         </div>
 
+        {/* Exam Period Form */}
         <form onSubmit={handleSave} className="bg-secondary/30 border border-white/10 rounded-3xl p-6 space-y-8">
           <div className="space-y-6">
             {/* Active Period Toggle */}
@@ -147,10 +268,10 @@ export default function Admin() {
               </div>
               <button
                 type="button"
-                onClick={() => setSettings(prev => ({ ...prev, isActive: !prev.isActive }))}
-                className={`transition-colors ${settings.isActive ? 'text-green-500' : 'text-white/20'}`}
+                onClick={() => setFormActive((prev) => !prev)}
+                className={`transition-colors ${formActive ? 'text-green-500' : 'text-white/20'}`}
               >
-                {settings.isActive ? <ToggleRight size={48} /> : <ToggleLeft size={48} />}
+                {formActive ? <ToggleRight size={48} /> : <ToggleLeft size={48} />}
               </button>
             </div>
 
@@ -161,10 +282,9 @@ export default function Admin() {
                 Data do Exame de Faixa
               </label>
               <input
-                type="text"
-                placeholder="Ex: 15/06/2026"
-                value={settings.examDate}
-                onChange={(e) => setSettings(prev => ({ ...prev, examDate: e.target.value }))}
+                type="date"
+                value={formExamDate}
+                onChange={(e) => setFormExamDate(e.target.value)}
                 className="w-full bg-secondary/50 border border-white/10 rounded-xl py-4 px-4 text-white focus:outline-none focus:border-primary/50 transition-all"
               />
             </div>
@@ -176,10 +296,39 @@ export default function Admin() {
                 Data Limite para Inscrições
               </label>
               <input
+                type="date"
+                value={formDeadline}
+                onChange={(e) => setFormDeadline(e.target.value)}
+                className="w-full bg-secondary/50 border border-white/10 rounded-xl py-4 px-4 text-white focus:outline-none focus:border-primary/50 transition-all"
+              />
+            </div>
+
+            {/* Exam Price */}
+            <div className="space-y-2">
+              <label className="text-[10px] uppercase font-bold tracking-widest text-white/40 ml-1 flex items-center gap-1">
+                <Info size={12} />
+                Valor do Exame (R$)
+              </label>
+              <input
                 type="text"
-                placeholder="Ex: 10/06/2026"
-                value={settings.deadlineDate}
-                onChange={(e) => setSettings(prev => ({ ...prev, deadlineDate: e.target.value }))}
+                placeholder="Ex: 150.00"
+                value={formPrice}
+                onChange={(e) => setFormPrice(e.target.value)}
+                className="w-full bg-secondary/50 border border-white/10 rounded-xl py-4 px-4 text-white focus:outline-none focus:border-primary/50 transition-all"
+              />
+            </div>
+
+            {/* PIX Key */}
+            <div className="space-y-2">
+              <label className="text-[10px] uppercase font-bold tracking-widest text-white/40 ml-1 flex items-center gap-1">
+                <Info size={12} />
+                Chave PIX
+              </label>
+              <input
+                type="text"
+                placeholder="Ex: contato@academia.com"
+                value={formPixKey}
+                onChange={(e) => setFormPixKey(e.target.value)}
                 className="w-full bg-secondary/50 border border-white/10 rounded-xl py-4 px-4 text-white focus:outline-none focus:border-primary/50 transition-all"
               />
             </div>
@@ -202,6 +351,57 @@ export default function Admin() {
             )}
           </button>
         </form>
+
+        {/* Users Section */}
+        <div className="bg-secondary/30 border border-white/10 rounded-3xl p-6 space-y-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-primary/10 rounded-lg border border-primary/20">
+              <Users className="text-primary" size={24} />
+            </div>
+            <div>
+              <h3 className="font-bold uppercase tracking-tight">Alunos Cadastrados</h3>
+              <p className="text-white/40 text-[10px] uppercase font-bold tracking-widest">Gerenciar usuários do sistema</p>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {users.length === 0 && (
+              <p className="text-white/40 text-sm text-center py-4">Nenhum usuário cadastrado.</p>
+            )}
+            {users.map((u) => (
+              <div key={u.id} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
+                <div className="space-y-0.5 min-w-0 mr-3">
+                  <div className="flex items-center gap-2">
+                    <User size={14} className="text-white/40 shrink-0" />
+                    <p className="font-bold text-sm truncate">{u.student_name}</p>
+                    {u.is_sensei && (
+                      <span className="text-[9px] uppercase font-bold tracking-wider text-primary border border-primary/30 rounded px-1">Sensei</span>
+                    )}
+                  </div>
+                  <p className="text-white/40 text-xs ml-5">{u.email}</p>
+                  <p className="text-white/40 text-xs ml-5">Faixa: {u.current_belt}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleUserResetPassword(u.id)}
+                  className="shrink-0 bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-bold py-2 px-3 rounded-xl transition-all active:scale-[0.98] flex items-center gap-1"
+                >
+                  {userResetSuccess[u.id] ? (
+                    <>
+                      <CheckCircle2 size={14} className="text-green-500" />
+                      OK
+                    </>
+                  ) : (
+                    <>
+                      <Lock size={12} />
+                      Resetar Senha
+                    </>
+                  )}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
 
         {/* Password Reset Card */}
         <div className="bg-secondary/30 border border-white/10 rounded-3xl p-6 space-y-6">
@@ -236,6 +436,8 @@ export default function Admin() {
               <p className="font-mono text-lg font-bold tracking-wider text-white">A123456b!</p>
             </div>
 
+            {resetError && <p className="text-primary text-xs font-bold">{resetError}</p>}
+
             <button
               type="submit"
               className="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold py-4 rounded-xl transition-all active:scale-[0.98] flex items-center justify-center gap-2"
@@ -255,11 +457,51 @@ export default function Admin() {
           </form>
         </div>
 
+        {/* Registrations Section */}
+        <div className="bg-secondary/30 border border-white/10 rounded-3xl p-6 space-y-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-primary/10 rounded-lg border border-primary/20">
+              <ClipboardList className="text-primary" size={24} />
+            </div>
+            <div>
+              <h3 className="font-bold uppercase tracking-tight">Inscrições</h3>
+              <p className="text-white/40 text-[10px] uppercase font-bold tracking-widest">Gerenciar pagamentos de inscrições</p>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {registrations.length === 0 && (
+              <p className="text-white/40 text-sm text-center py-4">Nenhuma inscrição encontrada.</p>
+            )}
+            {registrations.map((reg) => (
+              <div key={reg.id} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
+                <div className="space-y-0.5 min-w-0 mr-3">
+                  <p className="font-bold text-sm truncate">{reg.student_name}</p>
+                  <p className="text-white/40 text-xs">Faixa alvo: {reg.target_belt}</p>
+                  <p className={`text-xs font-bold ${reg.payment_status === 'CONFIRMADO' ? 'text-green-500' : 'text-yellow-400'}`}>
+                    {reg.payment_status}
+                  </p>
+                </div>
+                {reg.payment_status === 'PENDENTE' && (
+                  <button
+                    type="button"
+                    onClick={() => confirmPaymentMutation.mutate(reg.id)}
+                    className="shrink-0 bg-green-600/20 hover:bg-green-600/30 border border-green-600/30 text-green-400 text-xs font-bold py-2 px-3 rounded-xl transition-all active:scale-[0.98] flex items-center gap-1"
+                  >
+                    <CheckCircle2 size={14} />
+                    Confirmar Pagamento
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
         <div className="p-4 bg-white/5 border border-white/10 rounded-2xl flex gap-3">
           <Info size={20} className="text-white/40 shrink-0" />
           <p className="text-xs text-white/40 leading-relaxed">
-            As alterações feitas aqui refletem instantaneamente para todos os alunos e senseis. 
-            Certifique-se de que as datas estão no formato correto (DD/MM/AAAA).
+            As alterações feitas aqui refletem instantaneamente para todos os alunos e senseis.
+            Certifique-se de que as datas estão no formato correto (AAAA-MM-DD).
           </p>
         </div>
       </motion.div>
