@@ -1,0 +1,35 @@
+name: ilf-prd
+
+services:
+  app:
+    build:
+      context: .
+      args:
+        BUILD_COMMIT: ${BUILD_COMMIT:-latest}
+    container_name: ilf_app_prd
+    env_file: .env.prd
+    ports:
+      - "3003:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - uploads_ilf_prd:/app/uploads
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: ilf_postgres_prd
+    env_file: .env.prd
+    volumes:
+      - pgdata_ilf_prd:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  pgdata_ilf_prd:
+  uploads_ilf_prd:

@@ -1,8 +1,10 @@
+.env.dev
+.env.prd
+.env.local
 node_modules/
-build/
 dist/
+uploads/
+build/
 coverage/
 .DS_Store
 *.log
-.env*
-!.env.example
