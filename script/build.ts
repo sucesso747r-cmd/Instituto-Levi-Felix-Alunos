@@ -17,8 +17,8 @@ await build({
   bundle: true,
   platform: 'node',
   target: 'node22',
-  format: 'cjs',
-  outfile: path.join(root, 'dist/index.cjs'),
+  format: 'esm',
+  outfile: path.join(root, 'dist/index.mjs'),
   packages: 'external',
   alias: {
     '@shared': path.join(root, 'shared'),
