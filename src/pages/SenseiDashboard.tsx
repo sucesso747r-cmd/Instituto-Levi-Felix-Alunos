@@ -1,46 +1,85 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useLocation } from 'wouter';
-import { ArrowLeft, CheckCircle2, XCircle, Users, Search, Filter, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, XCircle, Search, ShieldCheck } from 'lucide-react';
 import { motion } from 'motion/react';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import Layout from '../components/Layout';
-import { User, StudentExamInfo, ExamSettings } from '../types';
+import useAuth from '../hooks/useAuth';
+import { apiRequest, queryClient } from '../lib/queryClient';
+
+interface SenseiStudent {
+  user: {
+    id: number;
+    student_name: string;
+    current_belt: string;
+    class_group: string | null;
+  };
+  evaluation: { is_eligible: boolean } | null;
+  registration: { payment_status: string } | null;
+}
+
+interface ExamPeriodResponse {
+  period: { exam_date: string } | null;
+}
+
+function getNextBelt(belt: string): string {
+  const belts = ['Branca', 'Amarela', 'Vermelha', 'Laranja', 'Verde', 'Roxa', 'Marrom', 'Preta'];
+  const idx = belts.indexOf(belt);
+  if (idx === -1 || idx === belts.length - 1) return belt;
+  return belts[idx + 1];
+}
+
+function getRegistrationStatus(registration: { payment_status: string } | null): string {
+  if (!registration) return 'N';
+  if (registration.payment_status === 'CONFIRMADO') return 'S';
+  if (registration.payment_status === 'PENDENTE') return 'PENDENCIA';
+  return 'N';
+}
+
+function formatExamDate(dateStr: string): string {
+  const [year, month, day] = dateStr.split('-');
+  return `${day}/${month}/${year}`;
+}
 
 export default function SenseiDashboard() {
   const [, setLocation] = useLocation();
-  const [user, setUser] = useState<User | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [examDate, setExamDate] = useState('15/06/2026');
+  const { user } = useAuth();
 
-  // Mock student data
-    const [students, setStudents] = useState<StudentExamInfo[]>([
-    { id: '1', name: 'Ana Souza', class: 'Turma A', currentBelt: 'Branca', intendedBelt: 'Amarela', isEligible: true, registrationStatus: 'S' },
-    { id: '2', name: 'Bruno Lima', class: 'Turma B', currentBelt: 'Amarela', intendedBelt: 'Vermelha', isEligible: false, registrationStatus: 'N' },
-    { id: '3', name: 'Carla Dias', class: 'Turma A', currentBelt: 'Vermelha', intendedBelt: 'Laranja', isEligible: true, registrationStatus: 'PENDENCIA' },
-    { id: '4', name: 'Daniel Alves', class: 'Turma C', currentBelt: 'Laranja', intendedBelt: 'Verde', isEligible: true, registrationStatus: 'S' },
-    { id: '5', name: 'Eduarda Rocha', class: 'Turma B', currentBelt: 'Verde', intendedBelt: 'Roxa', isEligible: false, registrationStatus: 'N' },
-    { id: '6', name: 'Pedro Santos', class: 'Turma Verde', currentBelt: 'Verde', intendedBelt: 'Roxa', isEligible: false, registrationStatus: 'N' },
-  ]);
+  const { data: students = [], isLoading: studentsLoading } = useQuery<SenseiStudent[]>({
+    queryKey: ['sensei', 'students'],
+    queryFn: async () => {
+      const res = await apiRequest('/api/sensei/students');
+      return res.json();
+    },
+  });
 
-  useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser && JSON.parse(storedUser).role === 'sensei') {
-      setUser(JSON.parse(storedUser));
-    } else {
-      setLocation('/');
-    }
+  const { data: examData } = useQuery<ExamPeriodResponse>({
+    queryKey: ['exam', 'current'],
+    queryFn: async () => {
+      const res = await apiRequest('/api/exam/current');
+      return res.json();
+    },
+  });
 
-    const storedSettings = localStorage.getItem('examSettings');
-    if (storedSettings) {
-      const settings: ExamSettings = JSON.parse(storedSettings);
-      setExamDate(settings.examDate);
-    }
-  }, [setLocation]);
+  const toggleMutation = useMutation({
+    mutationFn: async ({ userId, isEligible }: { userId: number; isEligible: boolean }) => {
+      await apiRequest('/api/sensei/evaluate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, isEligible }),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sensei', 'students'] });
+    },
+  });
 
-  if (!user) return null;
+  if (!user || studentsLoading) return null;
 
-  const toggleEligibility = (id: string) => {
-    setStudents(prev => prev.map(s => s.id === id ? { ...s, isEligible: !s.isEligible } : s));
-  };
+  const examDate = examData?.period?.exam_date
+    ? formatExamDate(examData.period.exam_date)
+    : '—';
 
   const getBeltColorClass = (belt: string) => {
     switch (belt) {
@@ -70,9 +109,9 @@ export default function SenseiDashboard() {
     }
   };
 
-  const filteredStudents = students.filter(s => 
-    s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    s.class.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredStudents = students.filter(s =>
+    s.user.student_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (s.user.class_group ?? '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -93,14 +132,14 @@ export default function SenseiDashboard() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div className="space-y-1">
             <h2 className="text-2xl font-bold flex items-center gap-2">
-              Olá Sensei {user.name.split(' ')[0]}
+              Olá Sensei {user.student_name.split(' ')[0]}
               <ShieldCheck className="text-primary" size={24} />
             </h2>
             <p className="text-white/40 text-sm">
               Gerencie a relação de alunos para o Exame de Faixa ({examDate})
             </p>
           </div>
-          
+
           <div className="relative group w-full md:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 group-focus-within:text-primary transition-colors" size={18} />
             <input
@@ -126,41 +165,46 @@ export default function SenseiDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                {filteredStudents.map((student) => (
-                  <tr key={student.id} className="hover:bg-white/5 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="font-bold">{student.name}</div>
-                      <div className={`text-[10px] uppercase font-medium ${getBeltColorClass(student.intendedBelt)}`}>
-                        Pretendida: {student.intendedBelt}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-white/60">{student.class}</td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2 py-1 border rounded text-[10px] font-bold ${getBeltBadgeStyle(student.currentBelt)}`}>
-                        {student.currentBelt}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <button
-                        onClick={() => toggleEligibility(student.id)}
-                        className={`p-2 rounded-lg transition-all ${student.isEligible ? 'bg-green-500/10 text-green-500' : 'bg-primary/10 text-primary'}`}
-                      >
-                        {student.isEligible ? <CheckCircle2 size={20} /> : <XCircle size={20} />}
-                      </button>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      {student.registrationStatus === 'S' && (
-                        <span className="px-2 py-1 bg-green-500/20 text-green-500 border border-green-500/30 rounded text-[10px] font-bold">S</span>
-                      )}
-                      {student.registrationStatus === 'N' && (
-                        <span className="px-2 py-1 bg-white/10 text-white/40 border border-white/20 rounded text-[10px] font-bold">N</span>
-                      )}
-                      {student.registrationStatus === 'PENDENCIA' && (
-                        <span className="px-2 py-1 bg-yellow-500/20 text-yellow-500 border border-yellow-500/30 rounded text-[10px] font-bold">PENDÊNCIA</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                {filteredStudents.map((student) => {
+                  const isEligible = student.evaluation?.is_eligible ?? false;
+                  const intendedBelt = getNextBelt(student.user.current_belt);
+                  const registrationStatus = getRegistrationStatus(student.registration);
+                  return (
+                    <tr key={student.user.id} className="hover:bg-white/5 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="font-bold">{student.user.student_name}</div>
+                        <div className={`text-[10px] uppercase font-medium ${getBeltColorClass(intendedBelt)}`}>
+                          Pretendida: {intendedBelt}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-white/60">{student.user.class_group ?? '—'}</td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2 py-1 border rounded text-[10px] font-bold ${getBeltBadgeStyle(student.user.current_belt)}`}>
+                          {student.user.current_belt}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <button
+                          onClick={() => toggleMutation.mutate({ userId: student.user.id, isEligible: !isEligible })}
+                          className={`p-2 rounded-lg transition-all ${isEligible ? 'bg-green-500/10 text-green-500' : 'bg-primary/10 text-primary'}`}
+                        >
+                          {isEligible ? <CheckCircle2 size={20} /> : <XCircle size={20} />}
+                        </button>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        {registrationStatus === 'S' && (
+                          <span className="px-2 py-1 bg-green-500/20 text-green-500 border border-green-500/30 rounded text-[10px] font-bold">S</span>
+                        )}
+                        {registrationStatus === 'N' && (
+                          <span className="px-2 py-1 bg-white/10 text-white/40 border border-white/20 rounded text-[10px] font-bold">N</span>
+                        )}
+                        {registrationStatus === 'PENDENCIA' && (
+                          <span className="px-2 py-1 bg-yellow-500/20 text-yellow-500 border border-yellow-500/30 rounded text-[10px] font-bold">PENDÊNCIA</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
