@@ -1,28 +1,66 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
-import { ArrowLeft, Copy, Check, Info, Mail, Phone } from 'lucide-react';
+import { ArrowLeft, Copy, Check, Info, Phone } from 'lucide-react';
 import { motion } from 'motion/react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Layout from '../components/Layout';
-import { User } from '../types';
+import useAuth from '../hooks/useAuth';
+import { apiRequest } from '../lib/queryClient';
+
+interface ExamPeriod {
+  exam_price: string;
+  pix_key: string;
+  exam_date: string;
+}
+
+interface ExamCurrentResponse {
+  period: ExamPeriod | null;
+  evaluation: unknown;
+  registration: unknown;
+}
 
 export default function ExamRegistration() {
   const [, setLocation] = useLocation();
-  const [user, setUser] = useState<User | null>(null);
   const [copied, setCopied] = useState(false);
+  const [mutationError, setMutationError] = useState<string | null>(null);
 
-  const pixKey = '19998098584'; // Example Pix key (phone number)
-  const examPrice = 'R$ 290,00'; // Updated price
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  const { data, isLoading } = useQuery<ExamCurrentResponse>({
+    queryKey: ['exam', 'current'],
+    queryFn: async () => {
+      const res = await apiRequest('/api/exam/current');
+      return res.json();
+    },
+  });
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest('/api/exam/register', { method: 'POST' });
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['exam', 'current'] });
+      setLocation('/exam-status');
+    },
+    onError: (error: Error) => {
+      setMutationError(error.message);
+    },
+  });
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    } else {
-      setLocation('/');
+    if (!isLoading && data && !data.period) {
+      setLocation('/exam-inactive');
     }
-  }, [setLocation]);
+  }, [isLoading, data, setLocation]);
 
-  if (!user) return null;
+  if (isLoading || !user) return null;
+
+  const period = data?.period;
+  if (!period) return null;
+
+  const pixKey = period.pix_key;
+  const examPrice = `R$ ${parseFloat(period.exam_price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(pixKey);
@@ -30,7 +68,7 @@ export default function ExamRegistration() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const isWhiteToYellow = user.currentBelt === 'Branca';
+  const isWhiteToYellow = user.current_belt === 'Branca';
 
   return (
     <Layout>
@@ -51,11 +89,11 @@ export default function ExamRegistration() {
           <div className="space-y-4">
             <div className="flex flex-col gap-1">
               <span className="text-white/40 text-xs uppercase tracking-wider">Nome do Aluno</span>
-              <span className="font-bold text-lg">{user.name}</span>
+              <span className="font-bold text-lg">{user.student_name}</span>
             </div>
             <div className="flex flex-col gap-1">
               <span className="text-white/40 text-xs uppercase tracking-wider">Graduação Atual</span>
-              <span className="font-bold text-lg">{user.currentBelt}</span>
+              <span className="font-bold text-lg">{user.current_belt}</span>
             </div>
           </div>
 
@@ -65,7 +103,7 @@ export default function ExamRegistration() {
               <p>O preço para realizar o Exame de Faixa é de <span className="text-white font-bold">{examPrice}</span>.</p>
               <p>1. Faça o pix para a chave abaixo:</p>
             </div>
-            
+
             <div className="p-4 bg-white/5 border border-white/10 rounded-xl space-y-3">
               <p className="text-xs text-white/40 uppercase font-bold">Chave PIX (Celular)</p>
               <div className="flex items-center justify-between bg-background/40 p-3 rounded-lg border border-white/5">
@@ -94,11 +132,25 @@ export default function ExamRegistration() {
             </div>
           )}
 
+          {mutationError && (
+            <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
+              <p className="text-sm text-red-400">{mutationError}</p>
+            </div>
+          )}
+
+          <button
+            onClick={() => mutation.mutate()}
+            disabled={mutation.isPending}
+            className="w-full py-3 bg-primary text-white font-bold rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {mutation.isPending ? 'Aguarde...' : 'Confirmar Inscrição'}
+          </button>
+
           <div className="border-t border-white/5 pt-6 space-y-4">
             <p className="text-white/40 text-xs italic">
               OBS: Em caso de dúvida, mandamos essas instruções para o e-mail <span className="text-white/60">{user.email}</span> ou contate a recepção no WhatsApp:
             </p>
-            <a 
+            <a
               href="https://wa.me/5519998098584?text=Olá,%20estou%20com%20dúvida%20na%20inscrição%20do%20Exame%20de%20Faixa."
               target="_blank"
               rel="noopener noreferrer"
