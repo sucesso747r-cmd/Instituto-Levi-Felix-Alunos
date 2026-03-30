@@ -19,7 +19,7 @@ const PORT = process.env.PORT || 3000;
 if (process.env.NODE_ENV === 'production') {
   const distPublic = path.resolve(__dirname, '../dist/public');
   app.use(express.static(distPublic));
-  app.get('*path', (_req, res) => {
+  app.get('/{*path}', (_req, res) => {
     res.sendFile(path.join(distPublic, 'index.html'));
   });
   app.listen(PORT, () => {
