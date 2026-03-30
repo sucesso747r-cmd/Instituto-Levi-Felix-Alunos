@@ -2,54 +2,60 @@ import { useState, FormEvent } from 'react';
 import { useLocation } from 'wouter';
 import { Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { motion } from 'motion/react';
+import { useQueryClient } from '@tanstack/react-query';
 import Layout from '../components/Layout';
+import { apiRequest } from '../lib/queryClient';
 
 export default function Login() {
   const [, setLocation] = useLocation();
+  const queryClient = useQueryClient();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [forgotSuccess, setForgotSuccess] = useState(false);
 
-  const handleLogin = (e: FormEvent) => {
+  const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
+    setForgotSuccess(false);
+    setLoading(true);
+    try {
+      await apiRequest('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      await queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
+      setLocation('/home');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao fazer login');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    // Check for password resets from Admin Panel
-    const resets = JSON.parse(localStorage.getItem('passwordResets') || '{}');
-    if (resets[email] && password !== resets[email]) {
-      setError('Senha incorreta para este usuário. Use a senha resetada pelo administrador.');
+  const handleForgotPassword = async () => {
+    if (!email) {
+      setError('Digite seu e-mail para recuperar a senha');
+      setForgotSuccess(false);
       return;
     }
-
-    // For demo purposes, we'll simulate a login.
-    // If email contains 'sensei', we'll log in as a sensei.
-    if (email.includes('sensei')) {
-      localStorage.setItem('user', JSON.stringify({
-        id: '1',
-        name: 'Levi Felix',
-        email: 'sensei@institutolevifelix.com.br',
-        role: 'sensei',
-        currentBelt: 'Preta'
-      }));
-    } else if (email.includes('inapto')) {
-      localStorage.setItem('user', JSON.stringify({
-        id: '3',
-        name: 'Pedro Santos',
-        email: 'pedro.inapto@gmail.com',
-        role: 'student',
-        currentBelt: 'Verde'
-      }));
-    } else {
-      localStorage.setItem('user', JSON.stringify({
-        id: '2',
-        name: 'João Silva',
-        email: 'aluno@gmail.com',
-        role: 'student',
-        currentBelt: 'Branca'
-      }));
+    setError('');
+    setForgotSuccess(false);
+    try {
+      await apiRequest('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      setForgotSuccess(true);
+      setError('E-mail de recuperação enviado!');
+    } catch (err) {
+      setForgotSuccess(false);
+      setError(err instanceof Error ? err.message : 'Erro ao enviar e-mail');
     }
-    setLocation('/home');
   };
 
   return (
@@ -98,7 +104,11 @@ export default function Login() {
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="p-3 bg-primary/10 border border-primary/20 rounded-xl text-primary text-xs font-bold text-center"
+              className={`p-3 border rounded-xl text-xs font-bold text-center ${
+                forgotSuccess
+                  ? 'bg-green-500/10 border-green-500/20 text-green-500'
+                  : 'bg-primary/10 border-primary/20 text-primary'
+              }`}
             >
               {error}
             </motion.div>
@@ -107,6 +117,7 @@ export default function Login() {
           <div className="flex justify-end">
             <button
               type="button"
+              onClick={handleForgotPassword}
               className="text-white/50 text-xs hover:text-white transition-colors"
             >
               Esqueceu a senha?
@@ -115,7 +126,8 @@ export default function Login() {
 
           <button
             type="submit"
-            className="w-full bg-primary hover:bg-red-700 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg shadow-primary/20"
+            disabled={loading}
+            className="w-full bg-primary hover:bg-red-700 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg shadow-primary/20 disabled:opacity-60 disabled:cursor-not-allowed"
           >
             Acessar Área do Aluno
             <ArrowRight size={20} />
@@ -124,7 +136,7 @@ export default function Login() {
 
         <div className="mt-12 p-6 bg-white/5 border border-white/10 rounded-2xl text-center">
           <p className="text-white/60 text-sm mb-3">Ainda não tem acesso?</p>
-          <a 
+          <a
             href="https://wa.me/5519998098584?text=Olá,%20quero%20acessar%20a%20Área%20dos%20Alunos%20do%20Site"
             target="_blank"
             rel="noopener noreferrer"
