@@ -282,7 +282,7 @@ export function registerRoutes(app: Express) {
           active: active ?? true,
           exam_date: examDate,
           registration_deadline: registrationDeadline,
-          exam_price: examPrice ?? '290.00',
+          exam_price: examPrice?.replace(',', '.') ?? '290.00',
           pix_key: pixKey ?? '19998098584',
         })
         .returning();
