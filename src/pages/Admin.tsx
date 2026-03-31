@@ -1,10 +1,11 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { useLocation } from 'wouter';
-import { Lock, Save, Settings, Calendar, Clock, ToggleLeft, ToggleRight, CheckCircle2, Info, Mail, User, ShieldAlert, Users, ClipboardList } from 'lucide-react';
-import { motion } from 'motion/react';
+import { Lock, Save, Settings, Calendar, Clock, ToggleLeft, ToggleRight, CheckCircle2, Info, Mail, User, ShieldAlert, Users, ClipboardList, UserPlus, X, ChevronDown } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Layout from '../components/Layout';
 import { apiRequest } from '../lib/queryClient';
+import { BELT_SEQUENCE } from '../../shared/schema';
 
 interface ExamPeriod {
   id: number;
@@ -53,6 +54,25 @@ export default function Admin() {
   // Payment feedback maps
   const [paymentSuccess, setPaymentSuccess] = useState<Record<number, boolean>>({});
   const [paymentError, setPaymentError] = useState<Record<number, string>>({});
+
+  // New Student Form state
+  const [showNewUserForm, setShowNewUserForm] = useState(false);
+  const [newStudentName, setNewStudentName] = useState('');
+  const [newEmail, setNewEmail] = useState('');
+  const [newBelt, setNewBelt] = useState<string>(BELT_SEQUENCE[0]);
+  const [newClassGroup, setNewClassGroup] = useState('');
+  const [newIsSensei, setNewIsSensei] = useState(false);
+  const [createUserSuccess, setCreateUserSuccess] = useState(false);
+  const [createUserError, setCreateUserError] = useState('');
+
+  const resetNewUserForm = () => {
+    setNewStudentName('');
+    setNewEmail('');
+    setNewBelt(BELT_SEQUENCE[0]);
+    setNewClassGroup('');
+    setNewIsSensei(false);
+    setCreateUserError('');
+  };
 
   // Exam period form state
   const [formActive, setFormActive] = useState(true);
@@ -153,6 +173,36 @@ export default function Admin() {
     },
   });
 
+  const createUserMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          studentName: newStudentName.trim(),
+          email: newEmail.trim().toLowerCase(),
+          currentBelt: newBelt,
+          classGroup: newClassGroup || null,
+          isSenseiFlag: newIsSensei,
+        }),
+      });
+    },
+    onSuccess: () => {
+      setCreateUserSuccess(true);
+      qc.invalidateQueries({ queryKey: ['admin', 'users'] });
+      setTimeout(() => {
+        setCreateUserSuccess(false);
+        setShowNewUserForm(false);
+        resetNewUserForm();
+      }, 2500);
+    },
+    onError: (err) => {
+      const msg = err instanceof Error ? err.message : 'Erro ao cadastrar aluno';
+      setCreateUserError(msg);
+      setTimeout(() => setCreateUserError(''), 4000);
+    },
+  });
+
   const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
     try {
@@ -202,6 +252,25 @@ export default function Admin() {
       setResetError(msg);
       setTimeout(() => setResetError(''), 4000);
     }
+  };
+
+  const handleCreateUser = (e: FormEvent) => {
+    e.preventDefault();
+    createUserMutation.mutate();
+  };
+
+  const beltPillClass = (belt: string) => {
+    const map: Record<string, string> = {
+      Branca:  'bg-white/10 text-white',
+      Amarela: 'bg-yellow-400/20 text-yellow-300',
+      Vermelha:'bg-red-500/20 text-red-400',
+      Laranja: 'bg-orange-400/20 text-orange-300',
+      Verde:   'bg-green-500/20 text-green-400',
+      Roxa:    'bg-purple-500/20 text-purple-400',
+      Marrom:  'bg-amber-800/30 text-amber-600',
+      Preta:   'bg-white/5 text-white/60 border border-white/20',
+    };
+    return map[belt] ?? 'bg-white/10 text-white';
   };
 
   const handleUserResetPassword = async (userId: number) => {
@@ -383,15 +452,37 @@ export default function Admin() {
 
         {/* Users Section */}
         <div className="bg-secondary/30 border border-white/10 rounded-3xl p-6 space-y-6">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary/10 rounded-lg border border-primary/20">
-              <Users className="text-primary" size={24} />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-primary/10 rounded-lg border border-primary/20"><Users className="text-primary" size={24} /></div>
+              <div>
+                <h3 className="font-bold uppercase tracking-tight">Alunos Cadastrados</h3>
+                <p className="text-white/40 text-[10px] uppercase font-bold tracking-widest">Gerenciar usuários do sistema</p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-bold uppercase tracking-tight">Alunos Cadastrados</h3>
-              <p className="text-white/40 text-[10px] uppercase font-bold tracking-widest">Gerenciar usuários do sistema</p>
-            </div>
+            <button type="button" onClick={() => { setShowNewUserForm(p => !p); if (showNewUserForm) resetNewUserForm(); }} className={`flex items-center gap-1.5 text-xs font-bold py-2 px-3 rounded-xl border transition-all ${showNewUserForm ? 'bg-white/10 border-white/20 text-white/70' : 'bg-primary/10 border-primary/20 text-primary hover:bg-primary/20'}`}>
+              {showNewUserForm ? <><X size={14}/> Cancelar</> : <><UserPlus size={14}/> Cadastrar Novo Aluno</>}
+            </button>
           </div>
+
+          <AnimatePresence>
+            {showNewUserForm && (
+              <motion.form key="new-user-form" initial={{opacity:0,height:0}} animate={{opacity:1,height:'auto'}} exit={{opacity:0,height:0}} transition={{duration:0.25}} onSubmit={handleCreateUser} className="overflow-hidden">
+                <div className="space-y-4 p-4 bg-white/5 rounded-2xl border border-white/10">
+                  <p className="text-[10px] uppercase font-bold tracking-widest text-white/40">Senha padrão: <span className="font-mono text-white/70">A123456b!</span></p>
+                  <div className="space-y-1.5"><label className="text-[10px] uppercase font-bold tracking-widest text-white/40">Nome do Aluno</label><input type="text" placeholder="Ex: João Silva" required value={newStudentName} onChange={e=>setNewStudentName(e.target.value)} className="w-full bg-secondary/50 border border-white/10 rounded-xl py-3 px-4 text-white placeholder:text-white/30 focus:outline-none focus:border-primary/50 transition-all text-sm"/></div>
+                  <div className="space-y-1.5"><label className="text-[10px] uppercase font-bold tracking-widest text-white/40">E-mail do Responsável</label><input type="email" placeholder="Ex: pai@email.com" required value={newEmail} onChange={e=>setNewEmail(e.target.value)} className="w-full bg-secondary/50 border border-white/10 rounded-xl py-3 px-4 text-white placeholder:text-white/30 focus:outline-none focus:border-primary/50 transition-all text-sm"/></div>
+                  <div className="space-y-1.5"><label className="text-[10px] uppercase font-bold tracking-widest text-white/40">Faixa Atual</label><select required value={newBelt} onChange={e=>setNewBelt(e.target.value)} className="w-full bg-secondary/50 border border-white/10 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-primary/50 transition-all text-sm">{BELT_SEQUENCE.map(b=><option key={b} value={b} className="bg-gray-900">{b}</option>)}</select></div>
+                  <div className="space-y-1.5"><label className="text-[10px] uppercase font-bold tracking-widest text-white/40">Turma (opcional)</label><input type="text" placeholder="Ex: Infantil, Adulto..." value={newClassGroup} onChange={e=>setNewClassGroup(e.target.value)} className="w-full bg-secondary/50 border border-white/10 rounded-xl py-3 px-4 text-white placeholder:text-white/30 focus:outline-none focus:border-primary/50 transition-all text-sm"/></div>
+                  <div className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5"><p className="text-sm font-bold">É Sensei?</p><button type="button" onClick={()=>setNewIsSensei(p=>!p)} className={`transition-colors ${newIsSensei?'text-primary':'text-white/20'}`}>{newIsSensei?<ToggleRight size={36}/>:<ToggleLeft size={36}/>}</button></div>
+                  {createUserError && <p className="text-red-400 text-xs font-bold">{createUserError}</p>}
+                  <button type="submit" disabled={createUserMutation.isPending} className="w-full bg-primary hover:bg-red-700 disabled:opacity-50 text-white font-bold py-3 rounded-xl transition-all active:scale-[0.98] flex items-center justify-center gap-2 text-sm">
+                    {createUserSuccess ? <><CheckCircle2 size={18}/> Aluno Cadastrado!</> : createUserMutation.isPending ? 'Cadastrando...' : <><UserPlus size={16}/> Cadastrar Aluno</>}
+                  </button>
+                </div>
+              </motion.form>
+            )}
+          </AnimatePresence>
 
           <div className="space-y-3">
             {users.length === 0 && (
