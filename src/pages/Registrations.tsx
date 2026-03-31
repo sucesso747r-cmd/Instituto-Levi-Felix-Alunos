@@ -85,7 +85,7 @@ export default function Registrations() {
         <div className="flex items-center gap-4">
           <button
             type="button"
-            onClick={() => setLocation('/admin')}
+            onClick={() => window.history.back()}
             className="flex items-center gap-2 text-white/40 hover:text-white transition-colors text-sm font-bold"
           >
             <ArrowLeft size={16} />

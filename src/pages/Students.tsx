@@ -83,7 +83,7 @@ export default function Students() {
         className="w-full space-y-6 max-w-lg mx-auto"
       >
         <button
-          onClick={() => setLocation('/admin')}
+          onClick={() => window.history.back()}
           className="flex items-center gap-2 text-white/40 hover:text-white transition-colors text-sm mb-4"
         >
           <ArrowLeft size={16} />
