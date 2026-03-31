@@ -567,7 +567,7 @@ export default function Admin() {
             <ClipboardList className="text-primary" size={24} />
           </div>
           <div className="flex-1 text-left">
-            <h3 className="font-bold uppercase tracking-tight">Inscrições</h3>
+            <h3 className="font-bold uppercase tracking-tight">Inscrições (Pagamentos)</h3>
             <p className="text-white/40 text-[10px] uppercase font-bold tracking-widest">
               Gerenciar pagamentos de inscrições
             </p>

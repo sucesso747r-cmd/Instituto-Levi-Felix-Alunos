@@ -172,7 +172,7 @@ export default function Registrations() {
                         )}
                       </td>
                       <td className="py-4 whitespace-nowrap">
-                        {registration.payment_status === 'PENDENTE' && (
+                        {registration.payment_status === 'PENDENTE' ? (
                           <div className="space-y-1">
                             {paymentSuccess[registration.id] ? (
                               <span className="flex items-center gap-1 text-green-400 text-xs font-bold">
@@ -196,6 +196,8 @@ export default function Registrations() {
                               </p>
                             )}
                           </div>
+                        ) : (
+                          <span className="text-white/20 text-xs font-bold">N/A</span>
                         )}
                       </td>
                     </tr>
