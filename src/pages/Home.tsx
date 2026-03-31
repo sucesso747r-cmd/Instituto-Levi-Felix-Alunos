@@ -6,11 +6,10 @@ import Layout from '../components/Layout';
 import useAuth from '../hooks/useAuth';
 import { apiRequest } from '../lib/queryClient';
 
-interface ExamPeriod {
-  id: number;
-  active: boolean;
-  exam_date: string;
-  deadline_date: string;
+interface ExamCurrentResponse {
+  period: { id: number; active: boolean; exam_date: string; registration_deadline: string; exam_price: string; pix_key: string; } | null;
+  evaluation: { is_eligible: boolean } | null;
+  registration: { payment_status: string } | null;
 }
 
 export default function Home() {
@@ -18,7 +17,7 @@ export default function Home() {
   const { user, isLoading: authLoading } = useAuth();
   const queryClient = useQueryClient();
 
-  const { data: period, isLoading: examLoading } = useQuery<ExamPeriod | null>({
+  const { data: examData, isLoading: examLoading } = useQuery<ExamCurrentResponse | null>({
     queryKey: ['exam', 'current'],
     queryFn: async () => {
       const res = await fetch('/api/exam/current', { credentials: 'include' });
@@ -26,8 +25,7 @@ export default function Home() {
         if (res.status === 404) return null;
         throw new Error('Failed to fetch exam period');
       }
-      const data = await res.json();
-      return data.period ?? null;
+      return res.json();
     },
     staleTime: 60_000,
   });
@@ -42,7 +40,7 @@ export default function Home() {
   };
 
   const firstName = user.student_name.split(' ')[0];
-  const examActive = period !== null && period !== undefined && period.active === true;
+  const examActive = examData?.period?.active === true;
 
   return (
     <Layout showLogout onLogout={handleLogout}>
