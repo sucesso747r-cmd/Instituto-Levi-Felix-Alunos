@@ -484,6 +484,23 @@ export default function Admin() {
             )}
           </AnimatePresence>
 
+          <button
+            type="button"
+            onClick={() => setLocation('/admin/students')}
+            className="w-full bg-secondary/30 hover:bg-white/5 border border-white/10 rounded-3xl p-6 flex items-center gap-4 transition-all active:scale-[0.98] group"
+          >
+            <div className="p-2 bg-primary/10 rounded-lg border border-primary/20 group-hover:bg-primary/20 transition-colors">
+              <Users className="text-primary" size={24} />
+            </div>
+            <div className="flex-1 text-left">
+              <h3 className="font-bold uppercase tracking-tight">Gerenciar Alunos</h3>
+              <p className="text-white/40 text-[10px] uppercase font-bold tracking-widest">
+                Ver e editar alunos cadastrados
+              </p>
+            </div>
+            <ArrowRight size={20} className="text-white/20 group-hover:text-white transition-colors" />
+          </button>
+
         </div>
 
         {/* Password Reset Card */}
