@@ -26,7 +26,8 @@ export default function Home() {
         if (res.status === 404) return null;
         throw new Error('Failed to fetch exam period');
       }
-      return res.json();
+      const data = await res.json();
+      return data.period ?? null;
     },
     staleTime: 60_000,
   });
