@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'motion/react';
-import { ArrowLeft, User, Lock, CheckCircle2, ShieldAlert } from 'lucide-react';
+import { ArrowLeft, User, Lock, CheckCircle2, ShieldAlert, Pencil, Trash2, Save, X, ToggleRight, ToggleLeft } from 'lucide-react';
 import Layout from '../components/Layout';
 import { apiRequest } from '../lib/queryClient';
+import { BELT_SEQUENCE } from '../../shared/schema';
 
 interface AdminUser {
   id: number;
@@ -21,6 +22,24 @@ export default function Students() {
 
   const [userResetSuccess, setUserResetSuccess] = useState<Record<number, boolean>>({});
   const [userResetError, setUserResetError] = useState<Record<number, string>>({});
+
+  // Inline edit state
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editBelt, setEditBelt] = useState('');
+  const [editClassGroup, setEditClassGroup] = useState('');
+  const [editIsSensei, setEditIsSensei] = useState(false);
+
+  // Delete confirmation state
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+
+  const startEdit = (u: AdminUser) => {
+    setEditingId(u.id);
+    setEditName(u.student_name);
+    setEditBelt(u.current_belt);
+    setEditClassGroup(u.class_group ?? '');
+    setEditIsSensei(u.is_sensei);
+  };
 
   // Verify admin session — redirect to /admin on error
   useQuery({
@@ -58,6 +77,37 @@ export default function Students() {
       const msg = err instanceof Error ? err.message : 'Erro ao resetar senha';
       setUserResetError((prev) => ({ ...prev, [userId]: msg }));
       setTimeout(() => setUserResetError((prev) => ({ ...prev, [userId]: '' })), 4000);
+    },
+  });
+
+  const editMutation = useMutation({
+    mutationFn: async (userId: number) => {
+      const res = await apiRequest(`/api/admin/users/${userId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          studentName: editName,
+          currentBelt: editBelt,
+          classGroup: editClassGroup,
+          isSenseiFlag: editIsSensei,
+        }),
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      setEditingId(null);
+      qc.invalidateQueries({ queryKey: ['admin', 'users'] });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (userId: number) => {
+      await apiRequest(`/api/admin/users/${userId}`, { method: 'DELETE' });
+      return userId;
+    },
+    onSuccess: () => {
+      setConfirmDeleteId(null);
+      qc.invalidateQueries({ queryKey: ['admin', 'users'] });
     },
   });
 
@@ -120,25 +170,126 @@ export default function Students() {
                     </div>
                     <p className="text-white/40 text-xs ml-5">{u.email}</p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => resetMutation.mutate(u.id)}
-                    disabled={resetMutation.isPending}
-                    className="shrink-0 bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-bold py-2 px-3 rounded-xl transition-all active:scale-[0.98] flex items-center gap-1 disabled:opacity-50"
-                  >
-                    {userResetSuccess[u.id] ? (
-                      <>
-                        <CheckCircle2 size={14} className="text-green-500" />
-                        OK
-                      </>
-                    ) : (
-                      <>
-                        <Lock size={12} />
-                        Resetar Senha
-                      </>
-                    )}
-                  </button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => resetMutation.mutate(u.id)}
+                      disabled={resetMutation.isPending}
+                      className="bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-bold py-2 px-3 rounded-xl transition-all active:scale-[0.98] flex items-center gap-1 disabled:opacity-50"
+                    >
+                      {userResetSuccess[u.id] ? (
+                        <>
+                          <CheckCircle2 size={14} className="text-green-500" />
+                          OK
+                        </>
+                      ) : (
+                        <>
+                          <Lock size={12} />
+                          Resetar Senha
+                        </>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => startEdit(u)}
+                      className="bg-white/5 hover:bg-white/10 border border-white/10 text-white p-2 rounded-xl transition-all active:scale-[0.98]"
+                    >
+                      <Pencil size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDeleteId(u.id)}
+                      className="bg-white/5 hover:bg-red-500/20 border border-white/10 hover:border-red-500/30 text-white/60 hover:text-red-400 p-2 rounded-xl transition-all active:scale-[0.98]"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 </div>
+
+                {/* Inline edit panel */}
+                {editingId === u.id && (
+                  <div className="p-4 bg-white/5 rounded-2xl border border-primary/20 space-y-3">
+                    <input
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      placeholder="Nome"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-primary/40"
+                    />
+                    <select
+                      value={editBelt}
+                      onChange={(e) => setEditBelt(e.target.value)}
+                      className="w-full bg-secondary border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-primary/40"
+                    >
+                      {BELT_SEQUENCE.map((b) => (
+                        <option key={b} value={b}>{b}</option>
+                      ))}
+                    </select>
+                    <input
+                      value={editClassGroup}
+                      onChange={(e) => setEditClassGroup(e.target.value)}
+                      placeholder="Turma (opcional)"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-primary/40"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setEditIsSensei((v) => !v)}
+                      className="flex items-center gap-2 text-sm text-white/60 hover:text-white transition-colors"
+                    >
+                      {editIsSensei ? (
+                        <ToggleRight size={20} className="text-primary" />
+                      ) : (
+                        <ToggleLeft size={20} className="text-white/30" />
+                      )}
+                      Sensei
+                    </button>
+                    <div className="flex gap-2 justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setEditingId(null)}
+                        className="flex items-center gap-1 text-xs text-white/40 hover:text-white border border-white/10 rounded-xl px-3 py-2 transition-all"
+                      >
+                        <X size={14} />
+                        Cancelar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => editMutation.mutate(u.id)}
+                        disabled={editMutation.isPending}
+                        className="flex items-center gap-1 text-xs font-bold text-white bg-primary/20 hover:bg-primary/30 border border-primary/30 rounded-xl px-3 py-2 transition-all disabled:opacity-50"
+                      >
+                        <Save size={14} />
+                        Salvar
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Delete confirmation */}
+                {confirmDeleteId === u.id && (
+                  <div className="p-4 bg-red-500/10 rounded-2xl border border-red-500/20 space-y-3">
+                    <p className="text-sm text-red-400 font-bold">Excluir <span className="text-white">{u.student_name}</span>? Esta ação não pode ser desfeita.</p>
+                    <div className="flex gap-2 justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDeleteId(null)}
+                        className="flex items-center gap-1 text-xs text-white/40 hover:text-white border border-white/10 rounded-xl px-3 py-2 transition-all"
+                      >
+                        <X size={14} />
+                        Cancelar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteMutation.mutate(u.id)}
+                        disabled={deleteMutation.isPending}
+                        className="flex items-center gap-1 text-xs font-bold text-white bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-xl px-3 py-2 transition-all disabled:opacity-50"
+                      >
+                        <Trash2 size={14} />
+                        Excluir
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {userResetError[u.id] && (
                   <p className="text-red-400 text-xs font-bold px-1">{userResetError[u.id]}</p>
                 )}

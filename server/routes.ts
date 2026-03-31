@@ -360,6 +360,70 @@ export function registerRoutes(app: Express) {
     }
   });
 
+  // PATCH /api/admin/users/:id
+  app.patch('/api/admin/users/:id', isAdminSession, async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: 'ID inválido' });
+
+      const { studentName, currentBelt, classGroup, isSenseiFlag } = req.body as {
+        studentName?: string;
+        currentBelt?: string;
+        classGroup?: string;
+        isSenseiFlag?: boolean;
+      };
+
+      const updateData: Record<string, unknown> = {};
+      if (studentName !== undefined) updateData.student_name = studentName;
+      if (currentBelt !== undefined) updateData.current_belt = currentBelt;
+      if (classGroup !== undefined) updateData.class_group = classGroup;
+      if (isSenseiFlag !== undefined) updateData.is_sensei = isSenseiFlag;
+
+      if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({ error: 'Nenhum campo fornecido' });
+      }
+
+      const [updated] = await db
+        .update(users)
+        .set(updateData)
+        .where(eq(users.id, id))
+        .returning();
+
+      if (!updated) return res.status(404).json({ error: 'Usuário não encontrado' });
+
+      const { password_hash: _, ...safeUser } = updated;
+      return res.json(safeUser);
+    } catch (err) {
+      console.error('PATCH /api/admin/users/:id error:', err);
+      return res.status(500).json({ error: 'Erro interno' });
+    }
+  });
+
+  // DELETE /api/admin/users/:id
+  app.delete('/api/admin/users/:id', isAdminSession, async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: 'ID inválido' });
+
+      const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.id, id));
+      if (!existing) return res.status(404).json({ error: 'Usuário não encontrado' });
+
+      // Delete exam registrations where user is the registrant
+      await db.delete(examRegistrations).where(eq(examRegistrations.user_id, id));
+
+      // Delete sensei evaluations where user is the student or the sensei
+      await db.delete(senseiEvaluations).where(eq(senseiEvaluations.user_id, id));
+      await db.delete(senseiEvaluations).where(eq(senseiEvaluations.sensei_id, id));
+
+      await db.delete(users).where(eq(users.id, id));
+
+      return res.json({ ok: true });
+    } catch (err) {
+      console.error('DELETE /api/admin/users/:id error:', err);
+      return res.status(500).json({ error: 'Erro interno' });
+    }
+  });
+
   // GET /api/admin/registrations
   app.get('/api/admin/registrations', isAdminSession, async (req, res) => {
     try {
