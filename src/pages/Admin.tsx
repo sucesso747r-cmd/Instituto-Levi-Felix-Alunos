@@ -1,6 +1,6 @@
-import { useState, FormEvent } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { useLocation } from 'wouter';
-import { Lock, Save, ArrowLeft, Settings, Calendar, Clock, ToggleLeft, ToggleRight, CheckCircle2, Info, Mail, User, ShieldAlert, Users, ClipboardList } from 'lucide-react';
+import { Lock, Save, Settings, Calendar, Clock, ToggleLeft, ToggleRight, CheckCircle2, Info, Mail, User, ShieldAlert, Users, ClipboardList } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Layout from '../components/Layout';
@@ -39,14 +39,20 @@ export default function Admin() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   // Password Reset State
   const [resetEmail, setResetEmail] = useState('');
   const [resetSuccess, setResetSuccess] = useState(false);
   const [resetError, setResetError] = useState('');
 
-  // Per-user reset success map
+  // Per-user reset success/error maps
   const [userResetSuccess, setUserResetSuccess] = useState<Record<number, boolean>>({});
+  const [userResetError, setUserResetError] = useState<Record<number, string>>({});
+
+  // Payment feedback maps
+  const [paymentSuccess, setPaymentSuccess] = useState<Record<number, boolean>>({});
+  const [paymentError, setPaymentError] = useState<Record<number, string>>({});
 
   // Exam period form state
   const [formActive, setFormActive] = useState(true);
@@ -55,26 +61,29 @@ export default function Admin() {
   const [formPrice, setFormPrice] = useState('');
   const [formPixKey, setFormPixKey] = useState('');
 
-  // Fetch exam period
+  // Fetch exam period — Bug 5: select must only return data, no setState side-effects
   const { data: examPeriod } = useQuery<ExamPeriod | null>({
     queryKey: ['admin', 'exam-period'],
     enabled: isLoggedIn,
+    staleTime: 0,
+    refetchOnMount: true,
     queryFn: async () => {
       const res = await apiRequest('/api/admin/exam-period');
       return res.json();
     },
-    select: (data) => {
-      // Populate form on first load
-      if (data) {
-        setFormActive(data.active);
-        setFormExamDate(data.exam_date ?? '');
-        setFormDeadline(data.registration_deadline ?? '');
-        setFormPrice(data.exam_price ?? '');
-        setFormPixKey(data.pix_key ?? '');
-      }
-      return data;
-    },
+    select: (data) => data,
   });
+
+  // Bug 5: populate form via useEffect so it runs on every cache update
+  useEffect(() => {
+    if (examPeriod) {
+      setFormActive(examPeriod.active);
+      setFormExamDate(examPeriod.exam_date ?? '');
+      setFormDeadline(examPeriod.registration_deadline ?? '');
+      setFormPrice(examPeriod.exam_price ?? '');
+      setFormPixKey(examPeriod.pix_key ?? '');
+    }
+  }, [examPeriod]);
 
   // Fetch users
   const { data: users = [] } = useQuery<AdminUser[]>({
@@ -96,7 +105,7 @@ export default function Admin() {
     },
   });
 
-  // Save exam period mutation
+  // Save exam period mutation — Bug 3: add onError feedback
   const saveMutation = useMutation({
     mutationFn: async () => {
       await apiRequest('/api/admin/exam-period', {
@@ -116,9 +125,14 @@ export default function Admin() {
       setTimeout(() => setSuccess(false), 3000);
       qc.invalidateQueries({ queryKey: ['admin', 'exam-period'] });
     },
+    onError: (err) => {
+      const msg = err instanceof Error ? err.message : 'Erro ao salvar configurações';
+      setSaveError(msg);
+      setTimeout(() => setSaveError(''), 4000);
+    },
   });
 
-  // Confirm payment mutation
+  // Confirm payment mutation — Bug 4: add success/error feedback
   const confirmPaymentMutation = useMutation({
     mutationFn: async (id: number) => {
       await apiRequest(`/api/admin/registrations/${id}`, {
@@ -127,8 +141,15 @@ export default function Admin() {
         body: JSON.stringify({ paymentStatus: 'CONFIRMADO' }),
       });
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
+      setPaymentSuccess((prev) => ({ ...prev, [variables]: true }));
+      setTimeout(() => setPaymentSuccess((prev) => ({ ...prev, [variables]: false })), 3000);
       qc.invalidateQueries({ queryKey: ['admin', 'registrations'] });
+    },
+    onError: (err, variables) => {
+      const msg = err instanceof Error ? err.message : 'Erro ao confirmar pagamento';
+      setPaymentError((prev) => ({ ...prev, [variables]: msg }));
+      setTimeout(() => setPaymentError((prev) => ({ ...prev, [variables]: '' })), 4000);
     },
   });
 
@@ -167,6 +188,7 @@ export default function Admin() {
     const user = users.find((u) => u.email === resetEmail);
     if (!user) {
       setResetError('Usuário não encontrado');
+      setTimeout(() => setResetError(''), 4000);
       return;
     }
     try {
@@ -176,7 +198,9 @@ export default function Admin() {
       setResetError('');
       setTimeout(() => setResetSuccess(false), 5000);
     } catch (err) {
-      setResetError(err instanceof Error ? err.message : 'Erro ao resetar senha');
+      const msg = err instanceof Error ? err.message : 'Erro ao resetar senha';
+      setResetError(msg);
+      setTimeout(() => setResetError(''), 4000);
     }
   };
 
@@ -185,8 +209,10 @@ export default function Admin() {
       await apiRequest(`/api/admin/users/${userId}/reset-password`, { method: 'POST' });
       setUserResetSuccess((prev) => ({ ...prev, [userId]: true }));
       setTimeout(() => setUserResetSuccess((prev) => ({ ...prev, [userId]: false })), 3000);
-    } catch {
-      // silently ignore
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Erro ao resetar senha';
+      setUserResetError((prev) => ({ ...prev, [userId]: msg }));
+      setTimeout(() => setUserResetError((prev) => ({ ...prev, [userId]: '' })), 4000);
     }
   };
 
@@ -303,7 +329,7 @@ export default function Admin() {
               />
             </div>
 
-            {/* Exam Price */}
+            {/* Exam Price — Bug 2: placeholder uses comma */}
             <div className="space-y-2">
               <label className="text-[10px] uppercase font-bold tracking-widest text-white/40 ml-1 flex items-center gap-1">
                 <Info size={12} />
@@ -311,7 +337,7 @@ export default function Admin() {
               </label>
               <input
                 type="text"
-                placeholder="Ex: 150.00"
+                placeholder="Ex: 150,00"
                 value={formPrice}
                 onChange={(e) => setFormPrice(e.target.value)}
                 className="w-full bg-secondary/50 border border-white/10 rounded-xl py-4 px-4 text-white focus:outline-none focus:border-primary/50 transition-all"
@@ -334,22 +360,25 @@ export default function Admin() {
             </div>
           </div>
 
-          <button
-            type="submit"
-            className="w-full bg-primary hover:bg-red-700 text-white font-bold py-5 rounded-2xl transition-all active:scale-[0.98] shadow-xl shadow-primary/30 flex items-center justify-center gap-2"
-          >
-            {success ? (
-              <>
-                <CheckCircle2 size={20} />
-                Configurações Salvas!
-              </>
-            ) : (
-              <>
-                <Save size={20} />
-                Salvar Alterações
-              </>
-            )}
-          </button>
+          <div className="space-y-2">
+            <button
+              type="submit"
+              className="w-full bg-primary hover:bg-red-700 text-white font-bold py-5 rounded-2xl transition-all active:scale-[0.98] shadow-xl shadow-primary/30 flex items-center justify-center gap-2"
+            >
+              {success ? (
+                <>
+                  <CheckCircle2 size={20} />
+                  Configurações Salvas!
+                </>
+              ) : (
+                <>
+                  <Save size={20} />
+                  Salvar Alterações
+                </>
+              )}
+            </button>
+            {saveError && <p className="text-red-400 text-xs font-bold text-center">{saveError}</p>}
+          </div>
         </form>
 
         {/* Users Section */}
@@ -369,35 +398,40 @@ export default function Admin() {
               <p className="text-white/40 text-sm text-center py-4">Nenhum usuário cadastrado.</p>
             )}
             {users.map((u) => (
-              <div key={u.id} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
-                <div className="space-y-0.5 min-w-0 mr-3">
-                  <div className="flex items-center gap-2">
-                    <User size={14} className="text-white/40 shrink-0" />
-                    <p className="font-bold text-sm truncate">{u.student_name}</p>
-                    {u.is_sensei && (
-                      <span className="text-[9px] uppercase font-bold tracking-wider text-primary border border-primary/30 rounded px-1">Sensei</span>
-                    )}
+              <div key={u.id} className="space-y-1">
+                <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
+                  <div className="space-y-0.5 min-w-0 mr-3">
+                    <div className="flex items-center gap-2">
+                      <User size={14} className="text-white/40 shrink-0" />
+                      <p className="font-bold text-sm truncate">{u.student_name}</p>
+                      {u.is_sensei && (
+                        <span className="text-[9px] uppercase font-bold tracking-wider text-primary border border-primary/30 rounded px-1">Sensei</span>
+                      )}
+                    </div>
+                    <p className="text-white/40 text-xs ml-5">{u.email}</p>
+                    <p className="text-white/40 text-xs ml-5">Faixa: {u.current_belt}</p>
                   </div>
-                  <p className="text-white/40 text-xs ml-5">{u.email}</p>
-                  <p className="text-white/40 text-xs ml-5">Faixa: {u.current_belt}</p>
+                  <button
+                    type="button"
+                    onClick={() => handleUserResetPassword(u.id)}
+                    className="shrink-0 bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-bold py-2 px-3 rounded-xl transition-all active:scale-[0.98] flex items-center gap-1"
+                  >
+                    {userResetSuccess[u.id] ? (
+                      <>
+                        <CheckCircle2 size={14} className="text-green-500" />
+                        OK
+                      </>
+                    ) : (
+                      <>
+                        <Lock size={12} />
+                        Resetar Senha
+                      </>
+                    )}
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleUserResetPassword(u.id)}
-                  className="shrink-0 bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-bold py-2 px-3 rounded-xl transition-all active:scale-[0.98] flex items-center gap-1"
-                >
-                  {userResetSuccess[u.id] ? (
-                    <>
-                      <CheckCircle2 size={14} className="text-green-500" />
-                      OK
-                    </>
-                  ) : (
-                    <>
-                      <Lock size={12} />
-                      Resetar Senha
-                    </>
-                  )}
-                </button>
+                {userResetError[u.id] && (
+                  <p className="text-red-400 text-xs font-bold px-1">{userResetError[u.id]}</p>
+                )}
               </div>
             ))}
           </div>
@@ -436,7 +470,7 @@ export default function Admin() {
               <p className="font-mono text-lg font-bold tracking-wider text-white">A123456b!</p>
             </div>
 
-            {resetError && <p className="text-primary text-xs font-bold">{resetError}</p>}
+            {resetError && <p className="text-red-400 text-xs font-bold">{resetError}</p>}
 
             <button
               type="submit"
@@ -474,35 +508,39 @@ export default function Admin() {
               <p className="text-white/40 text-sm text-center py-4">Nenhuma inscrição encontrada.</p>
             )}
             {registrations.map((reg) => (
-              <div key={reg.id} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
-                <div className="space-y-0.5 min-w-0 mr-3">
-                  <p className="font-bold text-sm truncate">{reg.student_name}</p>
-                  <p className="text-white/40 text-xs">Faixa alvo: {reg.target_belt}</p>
-                  <p className={`text-xs font-bold ${reg.payment_status === 'CONFIRMADO' ? 'text-green-500' : 'text-yellow-400'}`}>
-                    {reg.payment_status}
-                  </p>
+              <div key={reg.id} className="space-y-1">
+                <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
+                  <div className="space-y-0.5 min-w-0 mr-3">
+                    <p className="font-bold text-sm truncate">{reg.student_name}</p>
+                    <p className="text-white/40 text-xs">Faixa alvo: {reg.target_belt}</p>
+                    <p className={`text-xs font-bold ${reg.payment_status === 'CONFIRMADO' ? 'text-green-500' : 'text-yellow-400'}`}>
+                      {reg.payment_status}
+                    </p>
+                  </div>
+                  {reg.payment_status === 'PENDENTE' && (
+                    paymentSuccess[reg.id] ? (
+                      <span className="shrink-0 flex items-center gap-1 text-green-400 text-xs font-bold py-2 px-3">
+                        <CheckCircle2 size={14} />
+                        Confirmado!
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => confirmPaymentMutation.mutate(reg.id)}
+                        className="shrink-0 bg-green-600/20 hover:bg-green-600/30 border border-green-600/30 text-green-400 text-xs font-bold py-2 px-3 rounded-xl transition-all active:scale-[0.98] flex items-center gap-1"
+                      >
+                        <CheckCircle2 size={14} />
+                        Confirmar Pagamento
+                      </button>
+                    )
+                  )}
                 </div>
-                {reg.payment_status === 'PENDENTE' && (
-                  <button
-                    type="button"
-                    onClick={() => confirmPaymentMutation.mutate(reg.id)}
-                    className="shrink-0 bg-green-600/20 hover:bg-green-600/30 border border-green-600/30 text-green-400 text-xs font-bold py-2 px-3 rounded-xl transition-all active:scale-[0.98] flex items-center gap-1"
-                  >
-                    <CheckCircle2 size={14} />
-                    Confirmar Pagamento
-                  </button>
+                {paymentError[reg.id] && (
+                  <p className="text-red-400 text-xs font-bold px-1">{paymentError[reg.id]}</p>
                 )}
               </div>
             ))}
           </div>
-        </div>
-
-        <div className="p-4 bg-white/5 border border-white/10 rounded-2xl flex gap-3">
-          <Info size={20} className="text-white/40 shrink-0" />
-          <p className="text-xs text-white/40 leading-relaxed">
-            As alterações feitas aqui refletem instantaneamente para todos os alunos e senseis.
-            Certifique-se de que as datas estão no formato correto (AAAA-MM-DD).
-          </p>
         </div>
       </motion.div>
     </Layout>
