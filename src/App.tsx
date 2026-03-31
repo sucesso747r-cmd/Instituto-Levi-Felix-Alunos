@@ -8,6 +8,7 @@ import ExamStatus from './pages/ExamStatus';
 import ExamRegistration from './pages/ExamRegistration';
 import SenseiDashboard from './pages/SenseiDashboard';
 import Admin from './pages/Admin';
+import Registrations from './pages/Registrations';
 import ExamInactive from './pages/ExamInactive';
 import TermsOfUse from './pages/TermsOfUse';
 import PrivacyPolicy from './pages/PrivacyPolicy';
@@ -38,6 +39,7 @@ export default function App() {
           </ProtectedRoute>
         </Route>
         <Route path="/admin" component={Admin} />
+        <Route path="/admin/registrations" component={Registrations} />
         <Route path="/exam-inactive">
           <ProtectedRoute>
             <ExamInactive />

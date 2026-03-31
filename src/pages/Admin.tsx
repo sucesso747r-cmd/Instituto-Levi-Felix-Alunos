@@ -1,6 +1,6 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { useLocation } from 'wouter';
-import { Lock, Save, Settings, Calendar, Clock, ToggleLeft, ToggleRight, CheckCircle2, Info, Mail, User, ShieldAlert, Users, ClipboardList, UserPlus, X, ChevronDown } from 'lucide-react';
+import { Lock, Save, Settings, Calendar, Clock, ToggleLeft, ToggleRight, CheckCircle2, Info, Mail, User, ShieldAlert, Users, ClipboardList, UserPlus, X, ChevronDown, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Layout from '../components/Layout';
@@ -582,57 +582,23 @@ export default function Admin() {
           </form>
         </div>
 
-        {/* Registrations Section */}
-        <div className="bg-secondary/30 border border-white/10 rounded-3xl p-6 space-y-6">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary/10 rounded-lg border border-primary/20">
-              <ClipboardList className="text-primary" size={24} />
-            </div>
-            <div>
-              <h3 className="font-bold uppercase tracking-tight">Inscrições</h3>
-              <p className="text-white/40 text-[10px] uppercase font-bold tracking-widest">Gerenciar pagamentos de inscrições</p>
-            </div>
+        {/* Registrations Section — navigate to dedicated page */}
+        <button
+          type="button"
+          onClick={() => setLocation('/admin/registrations')}
+          className="w-full bg-secondary/30 hover:bg-white/5 border border-white/10 rounded-3xl p-6 flex items-center gap-4 transition-all active:scale-[0.98] group"
+        >
+          <div className="p-2 bg-primary/10 rounded-lg border border-primary/20 group-hover:bg-primary/20 transition-colors">
+            <ClipboardList className="text-primary" size={24} />
           </div>
-
-          <div className="space-y-3">
-            {registrations.length === 0 && (
-              <p className="text-white/40 text-sm text-center py-4">Nenhuma inscrição encontrada.</p>
-            )}
-            {registrations.map((reg) => (
-              <div key={reg.id} className="space-y-1">
-                <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
-                  <div className="space-y-0.5 min-w-0 mr-3">
-                    <p className="font-bold text-sm truncate">{reg.student_name}</p>
-                    <p className="text-white/40 text-xs">Faixa alvo: {reg.target_belt}</p>
-                    <p className={`text-xs font-bold ${reg.payment_status === 'CONFIRMADO' ? 'text-green-500' : 'text-yellow-400'}`}>
-                      {reg.payment_status}
-                    </p>
-                  </div>
-                  {reg.payment_status === 'PENDENTE' && (
-                    paymentSuccess[reg.id] ? (
-                      <span className="shrink-0 flex items-center gap-1 text-green-400 text-xs font-bold py-2 px-3">
-                        <CheckCircle2 size={14} />
-                        Confirmado!
-                      </span>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => confirmPaymentMutation.mutate(reg.id)}
-                        className="shrink-0 bg-green-600/20 hover:bg-green-600/30 border border-green-600/30 text-green-400 text-xs font-bold py-2 px-3 rounded-xl transition-all active:scale-[0.98] flex items-center gap-1"
-                      >
-                        <CheckCircle2 size={14} />
-                        Confirmar Pagamento
-                      </button>
-                    )
-                  )}
-                </div>
-                {paymentError[reg.id] && (
-                  <p className="text-red-400 text-xs font-bold px-1">{paymentError[reg.id]}</p>
-                )}
-              </div>
-            ))}
+          <div className="flex-1 text-left">
+            <h3 className="font-bold uppercase tracking-tight">Inscrições</h3>
+            <p className="text-white/40 text-[10px] uppercase font-bold tracking-widest">
+              Gerenciar pagamentos de inscrições
+            </p>
           </div>
-        </div>
+          <ArrowRight size={20} className="text-white/20 group-hover:text-white transition-colors" />
+        </button>
       </motion.div>
     </Layout>
   );
