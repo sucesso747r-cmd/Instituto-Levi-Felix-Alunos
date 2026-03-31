@@ -484,48 +484,6 @@ export default function Admin() {
             )}
           </AnimatePresence>
 
-          <div className="space-y-3">
-            {users.length === 0 && (
-              <p className="text-white/40 text-sm text-center py-4">Nenhum usuário cadastrado.</p>
-            )}
-            {users.map((u) => (
-              <div key={u.id} className="space-y-1">
-                <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
-                  <div className="space-y-0.5 min-w-0 mr-3">
-                    <div className="flex items-center gap-2">
-                      <User size={14} className="text-white/40 shrink-0" />
-                      <p className="font-bold text-sm truncate">{u.student_name}</p>
-                      {u.is_sensei && (
-                        <span className="text-[9px] uppercase font-bold tracking-wider text-primary border border-primary/30 rounded px-1">Sensei</span>
-                      )}
-                    </div>
-                    <p className="text-white/40 text-xs ml-5">{u.email}</p>
-                    <p className="text-white/40 text-xs ml-5">Faixa: {u.current_belt}</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleUserResetPassword(u.id)}
-                    className="shrink-0 bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-bold py-2 px-3 rounded-xl transition-all active:scale-[0.98] flex items-center gap-1"
-                  >
-                    {userResetSuccess[u.id] ? (
-                      <>
-                        <CheckCircle2 size={14} className="text-green-500" />
-                        OK
-                      </>
-                    ) : (
-                      <>
-                        <Lock size={12} />
-                        Resetar Senha
-                      </>
-                    )}
-                  </button>
-                </div>
-                {userResetError[u.id] && (
-                  <p className="text-red-400 text-xs font-bold px-1">{userResetError[u.id]}</p>
-                )}
-              </div>
-            ))}
-          </div>
         </div>
 
         {/* Password Reset Card */}

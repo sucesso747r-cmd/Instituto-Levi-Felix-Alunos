@@ -60,7 +60,7 @@ export default function Home() {
 
         <div className="grid gap-4">
           <button
-            onClick={() => window.open('https://i9star.com.br', '_blank')}
+            onClick={() => window.open('https://i9star.com.br/guia-karate', '_blank')}
             className="group w-full bg-secondary/50 hover:bg-white/10 border border-white/10 rounded-2xl p-6 flex items-center gap-5 transition-all active:scale-[0.98]"
           >
             <div className="w-14 h-14 bg-primary/10 rounded-xl flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all">

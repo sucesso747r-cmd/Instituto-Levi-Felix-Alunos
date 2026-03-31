@@ -16,7 +16,7 @@ interface ExamPeriod {
 interface ExamCurrentResponse {
   period: ExamPeriod | null;
   evaluation: unknown;
-  registration: unknown;
+  registration: { payment_status: string } | null;
 }
 
 export default function ExamRegistration() {
@@ -57,6 +57,7 @@ export default function ExamRegistration() {
   if (isLoading || !user) return null;
 
   const period = data?.period;
+  const registration = data?.registration ?? null;
   if (!period) return null;
 
   const pixKey = period.pix_key;
@@ -138,13 +139,20 @@ export default function ExamRegistration() {
             </div>
           )}
 
-          <button
-            onClick={() => mutation.mutate()}
-            disabled={mutation.isPending}
-            className="w-full py-3 bg-primary text-white font-bold rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {mutation.isPending ? 'Aguarde...' : 'Confirmar Inscrição'}
-          </button>
+          {registration === null ? (
+            <button
+              onClick={() => mutation.mutate()}
+              disabled={mutation.isPending}
+              className="w-full py-3 bg-primary text-white font-bold rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {mutation.isPending ? 'Aguarde...' : 'Confirmar Inscrição'}
+            </button>
+          ) : (
+            <div className="w-full py-4 bg-green-500/10 border border-green-500/30 rounded-xl flex items-center justify-center gap-2">
+              <Check size={20} className="text-green-400" />
+              <span className="text-green-400 font-bold">Inscrição já confirmada!</span>
+            </div>
+          )}
 
           <div className="border-t border-white/5 pt-6 space-y-4">
             <p className="text-white/40 text-xs italic">
