@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { ArrowLeft, CheckCircle2, XCircle, Search, ShieldCheck } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { motion } from 'motion/react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import Layout from '../components/Layout';
@@ -114,8 +115,23 @@ export default function SenseiDashboard() {
     (s.user.class_group ?? '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleExport = () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const rows = filteredStudents.map(s => ({
+      'Aluno': s.user.student_name,
+      'Turma': s.user.class_group ?? '—',
+      'Faixa Atual': s.user.current_belt,
+      'Apto': (s.evaluation?.is_eligible ?? false) ? 'Sim' : 'Não',
+      'Inscrito': getRegistrationStatus(s.registration),
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Alunos');
+    XLSX.writeFile(wb, `alunos-sensei-${today}.xlsx`);
+  };
+
   return (
-    <Layout>
+    <Layout subtitle="Área do Sensei">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -150,6 +166,15 @@ export default function SenseiDashboard() {
               className="w-full bg-secondary/50 border border-white/10 rounded-xl py-2.5 pl-10 pr-4 text-sm text-white focus:outline-none focus:border-primary/50 transition-all"
             />
           </div>
+        </div>
+
+        <div className="flex justify-end mb-2">
+          <button
+            onClick={handleExport}
+            className="flex items-center gap-2 bg-secondary/50 border border-white/10 hover:border-white/30 text-white/60 hover:text-white transition-all text-xs px-3 py-2 rounded-lg"
+          >
+            Exportar .XLS
+          </button>
         </div>
 
         <div className="bg-secondary/20 border border-white/10 rounded-2xl overflow-hidden">

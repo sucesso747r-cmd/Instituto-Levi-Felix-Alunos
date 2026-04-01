@@ -28,6 +28,7 @@ export default function Registrations() {
 
   const [paymentSuccess, setPaymentSuccess] = useState<Record<number, boolean>>({});
   const [paymentError, setPaymentError] = useState<Record<number, string>>({});
+  const [showPendingOnly, setShowPendingOnly] = useState(false);
 
   // Auth guard: verify admin session on mount
   const { isError } = useQuery({
@@ -93,16 +94,29 @@ export default function Registrations() {
           </button>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-primary/10 rounded-lg border border-primary/20">
-            <Clock className="text-primary" size={24} />
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-primary/10 rounded-lg border border-primary/20">
+              <Clock className="text-primary" size={24} />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold uppercase tracking-tight">Inscrições</h2>
+              <p className="text-white/40 text-[10px] uppercase font-bold tracking-widest">
+                Gerenciar pagamentos de inscrições
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-xl font-bold uppercase tracking-tight">Inscrições</h2>
-            <p className="text-white/40 text-[10px] uppercase font-bold tracking-widest">
-              Gerenciar pagamentos de inscrições
-            </p>
-          </div>
+          <button
+            type="button"
+            onClick={() => setShowPendingOnly(v => !v)}
+            className={`text-xs font-bold px-3 py-2 rounded-lg border transition-all ${
+              showPendingOnly
+                ? 'border-primary text-primary bg-primary/10'
+                : 'border-white/10 text-white/40 hover:text-white hover:border-white/30'
+            }`}
+          >
+            Mostrar apenas pendentes
+          </button>
         </div>
 
         {/* Table */}
@@ -143,7 +157,7 @@ export default function Registrations() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                  {registrations.map(({ registration, user }) => (
+                  {(showPendingOnly ? registrations.filter(r => r.registration.payment_status !== 'CONFIRMADO') : registrations).map(({ registration, user }) => (
                     <tr key={registration.id} className="align-middle">
                       <td className="py-4 pr-4 whitespace-nowrap">
                         <p className="font-bold truncate max-w-[160px]">{user.student_name}</p>

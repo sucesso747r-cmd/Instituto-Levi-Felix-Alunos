@@ -6,9 +6,10 @@ interface LayoutProps {
   children: ReactNode;
   showLogout?: boolean;
   onLogout?: () => void;
+  subtitle?: string;
 }
 
-export default function Layout({ children, showLogout, onLogout }: LayoutProps) {
+export default function Layout({ children, showLogout, onLogout, subtitle }: LayoutProps) {
   const [, setLocation] = useLocation();
 
   const handleLogout = () => {
@@ -36,7 +37,7 @@ export default function Layout({ children, showLogout, onLogout }: LayoutProps) 
         <h1 className="text-3xl font-bold tracking-tight uppercase">
           Instituto <span className="text-primary">Levi Felix</span>
         </h1>
-        <p className="text-white/60 text-sm mt-1">Área do Aluno</p>
+        <p className="text-white/60 text-sm mt-1">{subtitle ?? 'Área do Aluno'}</p>
       </header>
 
       <main className="w-full max-w-md flex-1 flex flex-col">

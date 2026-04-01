@@ -34,6 +34,7 @@
     "react-dom": "^19.0.0",
     "resend": "^6.9.1",
     "wouter": "^3.9.0",
+    "xlsx": "^0.18.5",
     "zod": "^3.25.76"
   },
   "devDependencies": {
