@@ -23,6 +23,7 @@
     "dotenv": "^17.2.3",
     "drizzle-orm": "^0.39.3",
     "drizzle-zod": "^0.7.0",
+    "exceljs": "^4.4.0",
     "express": "^5.0.1",
     "express-session": "^1.19.0",
     "lucide-react": "^0.546.0",
@@ -34,7 +35,6 @@
     "react-dom": "^19.0.0",
     "resend": "^6.9.1",
     "wouter": "^3.9.0",
-    "xlsx": "^0.18.5",
     "zod": "^3.25.76"
   },
   "devDependencies": {

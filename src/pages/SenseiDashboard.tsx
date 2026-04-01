@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { ArrowLeft, CheckCircle2, XCircle, Search, ShieldCheck } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { motion } from 'motion/react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import Layout from '../components/Layout';
@@ -115,19 +115,34 @@ export default function SenseiDashboard() {
     (s.user.class_group ?? '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleExport = () => {
+  const handleExport = async () => {
     const today = new Date().toISOString().slice(0, 10);
-    const rows = filteredStudents.map(s => ({
-      'Aluno': s.user.student_name,
-      'Turma': s.user.class_group ?? '—',
-      'Faixa Atual': s.user.current_belt,
-      'Apto': (s.evaluation?.is_eligible ?? false) ? 'Sim' : 'Não',
-      'Inscrito': getRegistrationStatus(s.registration),
-    }));
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Alunos');
-    XLSX.writeFile(wb, `alunos-sensei-${today}.xlsx`);
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Alunos');
+    ws.columns = [
+      { header: 'Aluno', key: 'Aluno' },
+      { header: 'Turma', key: 'Turma' },
+      { header: 'Faixa Atual', key: 'Faixa Atual' },
+      { header: 'Apto', key: 'Apto' },
+      { header: 'Inscrito', key: 'Inscrito' },
+    ];
+    filteredStudents.forEach(s => {
+      ws.addRow({
+        'Aluno': s.user.student_name,
+        'Turma': s.user.class_group ?? '—',
+        'Faixa Atual': s.user.current_belt,
+        'Apto': (s.evaluation?.is_eligible ?? false) ? 'Sim' : 'Não',
+        'Inscrito': getRegistrationStatus(s.registration),
+      });
+    });
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `alunos-sensei-${today}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
