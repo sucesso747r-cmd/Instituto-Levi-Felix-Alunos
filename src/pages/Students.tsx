@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useLocation } from 'wouter';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'motion/react';
 import { ArrowLeft, User, Lock, CheckCircle2, ShieldAlert, Pencil, Trash2, Save, X, ToggleRight, ToggleLeft } from 'lucide-react';
@@ -17,7 +16,6 @@ interface AdminUser {
 }
 
 export default function Students() {
-  const [, setLocation] = useLocation();
   const qc = useQueryClient();
 
   const [userResetSuccess, setUserResetSuccess] = useState<Record<number, boolean>>({});
@@ -40,20 +38,6 @@ export default function Students() {
     setEditClassGroup(u.class_group ?? '');
     setEditIsSensei(u.is_sensei);
   };
-
-  // Verify admin session — redirect to /admin on error
-  useQuery({
-    queryKey: ['admin', 'exam-period'],
-    retry: false,
-    queryFn: async () => {
-      const res = await apiRequest('/api/admin/exam-period');
-      return res.json();
-    },
-    throwOnError: false,
-    meta: {
-      onError: () => setLocation('/admin'),
-    },
-  });
 
   const { data: users = [] } = useQuery<AdminUser[]>({
     queryKey: ['admin', 'users'],

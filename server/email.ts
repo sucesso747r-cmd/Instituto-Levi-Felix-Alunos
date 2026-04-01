@@ -26,7 +26,7 @@ export async function sendWelcomeEmail(
             <p style="margin: 0 0 8px 0; font-size: 14px;"><strong>E-mail:</strong> ${to}</p>
             <p style="margin: 0; font-size: 14px;"><strong>Senha temporária:</strong> ${password}</p>
           </div>
-          <p style="font-size: 15px; line-height: 1.6; color: #b91c1c; font-weight: bold;">Por favor, altere sua senha no primeiro acesso.</p>
+          <p style="font-size: 15px; line-height: 1.6;">Para acessar o sistema, use o link abaixo. Caso precise trocar sua senha, clique em "Esqueceu a senha?" na tela de login.</p>
           <p style="font-size: 14px; line-height: 1.6; color: #555;">Atenciosamente,<br/>Instituto Levi Felix</p>
         </div>
       `,

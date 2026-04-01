@@ -30,7 +30,7 @@ export default function Login() {
       await queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
       setLocation('/home');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao fazer login');
+      setError('E-mail ou senha incorretos. Tente novamente.');
     } finally {
       setLoading(false);
     }

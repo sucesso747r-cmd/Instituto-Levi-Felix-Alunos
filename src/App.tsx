@@ -13,6 +13,7 @@ import Students from './pages/Students';
 import ExamInactive from './pages/ExamInactive';
 import TermsOfUse from './pages/TermsOfUse';
 import PrivacyPolicy from './pages/PrivacyPolicy';
+import ResetPassword from './pages/ResetPassword';
 
 export default function App() {
   return (
@@ -49,6 +50,7 @@ export default function App() {
         </Route>
         <Route path="/terms" component={TermsOfUse} />
         <Route path="/privacy" component={PrivacyPolicy} />
+        <Route path="/reset-password" component={ResetPassword} />
 
         {/* Fallback to login */}
         <Route>

@@ -128,7 +128,7 @@ export default function ExamRegistration() {
             <div className="p-4 bg-primary/10 border border-primary/30 rounded-xl flex gap-3">
               <Info size={24} className="text-primary shrink-0" />
               <p className="text-sm font-medium text-primary">
-                Só para os faixas branca: Atenção, vá à secretaria do Instituto e preencha a ficha da FPK - Federação Paulista de Karatê. É uma exigência para as faixas Amarela e posteriores.
+                Atenção, vá à secretaria do Instituto com 2 (duas) fotos 3x4 e preencha a ficha da FPK - Federação Paulista de Karatê. É uma exigência da FPK.
               </p>
             </div>
           )}
