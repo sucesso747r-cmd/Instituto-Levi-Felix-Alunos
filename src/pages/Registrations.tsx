@@ -1,3 +1,4 @@
+import ExcelJS from 'exceljs';
 import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -75,6 +76,37 @@ export default function Registrations() {
     },
   });
 
+  const handleExport = async () => {
+    const list = showPendingOnly ? registrations.filter(r => r.registration.payment_status !== 'CONFIRMADO') : registrations;
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Inscrições');
+    ws.columns = [
+      { header: 'Aluno', key: 'Aluno' },
+      { header: 'Faixa Atual', key: 'Faixa Atual' },
+      { header: 'Faixa Pretendida', key: 'Faixa Pretendida' },
+      { header: 'Turma', key: 'Turma' },
+      { header: 'Pagamento', key: 'Pagamento' },
+    ];
+    list.forEach(({ registration, user }) => {
+      ws.addRow({
+        'Aluno': user.student_name,
+        'Faixa Atual': user.current_belt,
+        'Faixa Pretendida': registration.target_belt,
+        'Turma': user.class_group ?? '—',
+        'Pagamento': registration.payment_status,
+      });
+    });
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const today = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `inscricoes-${today}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <Layout>
       <motion.div
@@ -86,7 +118,7 @@ export default function Registrations() {
         <div className="flex items-center gap-4">
           <button
             type="button"
-            onClick={() => window.history.back()}
+            onClick={() => setLocation('/admin-home')}
             className="flex items-center gap-2 text-white/40 hover:text-white transition-colors text-sm font-bold"
           >
             <ArrowLeft size={16} />
@@ -106,17 +138,26 @@ export default function Registrations() {
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => setShowPendingOnly(v => !v)}
-            className={`text-xs font-bold px-3 py-2 rounded-lg border transition-all ${
-              showPendingOnly
-                ? 'border-primary text-primary bg-primary/10'
-                : 'border-white/10 text-white/40 hover:text-white hover:border-white/30'
-            }`}
-          >
-            Mostrar apenas pendentes
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowPendingOnly(v => !v)}
+              className={`text-xs font-bold px-3 py-2 rounded-lg border transition-all ${
+                showPendingOnly
+                  ? 'border-primary text-primary bg-primary/10'
+                  : 'border-white/10 text-white/40 hover:text-white hover:border-white/30'
+              }`}
+            >
+              Mostrar apenas pendentes
+            </button>
+            <button
+              type="button"
+              onClick={handleExport}
+              className="flex items-center gap-2 bg-secondary/50 border border-white/10 hover:border-white/30 text-white/60 hover:text-white transition-all text-xs px-3 py-2 rounded-lg"
+            >
+              Exportar .XLS
+            </button>
+          </div>
         </div>
 
         {/* Table */}

@@ -123,6 +123,7 @@ export default function SenseiDashboard() {
       { header: 'Aluno', key: 'Aluno' },
       { header: 'Turma', key: 'Turma' },
       { header: 'Faixa Atual', key: 'Faixa Atual' },
+      { header: 'Faixa Pretendida', key: 'Faixa Pretendida' },
       { header: 'Apto', key: 'Apto' },
       { header: 'Inscrito', key: 'Inscrito' },
     ];
@@ -131,6 +132,7 @@ export default function SenseiDashboard() {
         'Aluno': s.user.student_name,
         'Turma': s.user.class_group ?? '—',
         'Faixa Atual': s.user.current_belt,
+        'Faixa Pretendida': getNextBelt(s.user.current_belt),
         'Apto': (s.evaluation?.is_eligible ?? false) ? 'Sim' : 'Não',
         'Inscrito': getRegistrationStatus(s.registration),
       });
