@@ -12,6 +12,7 @@ import {
   type Belt,
 } from '@shared/schema.js';
 import { eq, and, sql } from 'drizzle-orm';
+import { sendWelcomeEmail, sendPasswordResetEmail, sendRegistrationConfirmedEmail, sendPaymentConfirmedEmail } from './email.js';
 
 function sha256(str: string): Buffer {
   return crypto.createHash('sha256').update(str).digest();
@@ -119,6 +120,15 @@ export function registerRoutes(app: Express) {
           target_belt: targetBelt,
         })
         .returning();
+
+      sendRegistrationConfirmedEmail(
+        req.user!.email,
+        req.user!.student_name,
+        period.exam_date,
+        period.pix_key,
+        String(period.exam_price),
+        targetBelt
+      );
 
       return res.status(201).json(registration);
     } catch (err) {
@@ -333,6 +343,7 @@ export function registerRoutes(app: Express) {
         .returning();
 
       const { password_hash: _, ...safeUser } = user;
+      sendWelcomeEmail(safeUser.email, safeUser.student_name, 'A123456b!');
       return res.status(201).json(safeUser);
     } catch (err) {
       console.error('POST /api/admin/users error:', err);
@@ -352,6 +363,11 @@ export function registerRoutes(app: Express) {
         .update(users)
         .set({ password_hash: passwordHash })
         .where(eq(users.id, id));
+
+      const [resetUser] = await db
+        .select({ email: users.email, student_name: users.student_name })
+        .from(users).where(eq(users.id, id));
+      if (resetUser) sendPasswordResetEmail(resetUser.email, resetUser.student_name);
 
       return res.json({ ok: true });
     } catch (err) {
@@ -476,6 +492,19 @@ export function registerRoutes(app: Express) {
         .returning();
 
       if (!updated) return res.status(404).json({ error: 'Inscrição não encontrada' });
+
+      if (paymentStatus === 'CONFIRMADO') {
+        const [regInfo] = await db
+          .select({ email: users.email, student_name: users.student_name })
+          .from(examRegistrations)
+          .innerJoin(users, eq(examRegistrations.user_id, users.id))
+          .where(eq(examRegistrations.id, id));
+        const [activePeriod] = await db
+          .select({ exam_date: examPeriods.exam_date })
+          .from(examPeriods).where(eq(examPeriods.active, true)).limit(1);
+        if (regInfo && activePeriod)
+          sendPaymentConfirmedEmail(regInfo.email, regInfo.student_name, activePeriod.exam_date, updated.target_belt);
+      }
 
       return res.json(updated);
     } catch (err) {
