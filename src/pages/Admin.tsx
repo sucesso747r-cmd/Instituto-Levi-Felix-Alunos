@@ -456,7 +456,7 @@ export default function Admin() {
             <div className="flex items-center gap-3">
               <div className="p-2 bg-primary/10 rounded-lg border border-primary/20"><Users className="text-primary" size={24} /></div>
               <div>
-                <h3 className="font-bold uppercase tracking-tight">Alunos Cadastrados</h3>
+                <h3 className="font-bold uppercase tracking-tight">Alunos/Senseis Cadastrados</h3>
                 <p className="text-white/40 text-[10px] uppercase font-bold tracking-widest">Gerenciar usuários do sistema</p>
               </div>
             </div>

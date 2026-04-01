@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLocation } from 'wouter';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'motion/react';
 import { ArrowLeft, User, Lock, CheckCircle2, ShieldAlert, Pencil, Trash2, Save, X, ToggleRight, ToggleLeft } from 'lucide-react';
@@ -16,6 +17,7 @@ interface AdminUser {
 }
 
 export default function Students() {
+  const [, setLocation] = useLocation();
   const qc = useQueryClient();
 
   const [userResetSuccess, setUserResetSuccess] = useState<Record<number, boolean>>({});
@@ -117,7 +119,7 @@ export default function Students() {
         className="w-full space-y-6 max-w-lg mx-auto"
       >
         <button
-          onClick={() => window.history.back()}
+          onClick={() => setLocation('/admin-home')}
           className="flex items-center gap-2 text-white/40 hover:text-white transition-colors text-sm mb-4"
         >
           <ArrowLeft size={16} />

@@ -107,6 +107,10 @@ export default function ExamStatusPage() {
               <span className="text-white/40 text-[10px] uppercase font-bold tracking-wider">Sua Faixa Atual</span>
               <span className="font-bold text-xl">{user.current_belt}</span>
             </div>
+            <div className="flex flex-col gap-1 text-right">
+              <span className="text-white/40 text-[10px] uppercase font-bold tracking-wider">Pretendida</span>
+              <span className="font-bold text-xl">{nextBelt}</span>
+            </div>
             <Award className="text-primary/50" size={32} />
           </div>
 

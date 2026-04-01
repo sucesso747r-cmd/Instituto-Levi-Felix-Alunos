@@ -53,7 +53,7 @@ export async function sendPasswordResetEmail(
           <div style="background: #f5f5f5; border-left: 4px solid #b91c1c; padding: 16px; margin: 24px 0; border-radius: 4px;">
             <p style="margin: 0; font-size: 16px; font-family: monospace; letter-spacing: 1px;"><strong>A123456b!</strong></p>
           </div>
-          <p style="font-size: 15px; line-height: 1.6; color: #b91c1c; font-weight: bold;">Altere sua senha no próximo acesso para garantir a segurança da sua conta.</p>
+          <p style="font-size: 15px; line-height: 1.6; color: #b91c1c; font-weight: bold;">Troque sua senha para uma mais segura, clique em "Esqueceu a senha?" na tela de login.</p>
           <p style="font-size: 14px; line-height: 1.6; color: #555;">Atenciosamente,<br/>Instituto Levi Felix</p>
         </div>
       `,
@@ -85,7 +85,7 @@ export async function sendRegistrationConfirmedEmail(
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #1a1a1a;">
           <h1 style="color: #b91c1c; font-size: 24px; margin-bottom: 16px;">Inscrição confirmada!</h1>
-          <p style="font-size: 15px; line-height: 1.6;">Parabéns, <strong>${studentName}</strong>! Sua inscrição no Exame de Faixa foi confirmada. Confira os detalhes abaixo:</p>
+          <p style="font-size: 15px; line-height: 1.6;">Parabéns, <strong>${studentName}</strong>! Sua inscrição no Exame de Faixa foi solicitada. Confira os detalhes abaixo:</p>
           <div style="background: #f5f5f5; border-left: 4px solid #b91c1c; padding: 16px; margin: 24px 0; border-radius: 4px;">
             <p style="margin: 0 0 8px 0; font-size: 14px;"><strong>Data do exame:</strong> ${formattedDate}</p>
             <p style="margin: 0 0 8px 0; font-size: 14px;"><strong>Faixa pretendida:</strong> ${targetBelt}</p>
@@ -94,6 +94,7 @@ export async function sendRegistrationConfirmedEmail(
           </div>
           <p style="font-size: 15px; line-height: 1.6;">Após realizar o pagamento via PIX, envie o comprovante para o nosso WhatsApp:</p>
           <p style="font-size: 16px; font-weight: bold; color: #b91c1c; margin: 8px 0 24px 0;">(19) 99809-8584</p>
+          <p style="font-size: 15px; line-height: 1.6;">Estamos aguardando seu pagamento para confirmar a sua participação no exame!</p>
           <p style="font-size: 14px; line-height: 1.6; color: #555;">Atenciosamente,<br/>Instituto Levi Felix</p>
         </div>
       `,

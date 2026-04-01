@@ -147,10 +147,15 @@ export default function ExamRegistration() {
             >
               {mutation.isPending ? 'Aguarde...' : 'Confirmar Inscrição'}
             </button>
-          ) : (
+          ) : registration.payment_status === 'confirmed' ? (
             <div className="w-full py-4 bg-green-500/10 border border-green-500/30 rounded-xl flex items-center justify-center gap-2">
               <Check size={20} className="text-green-400" />
               <span className="text-green-400 font-bold">Inscrição já confirmada!</span>
+            </div>
+          ) : (
+            <div className="w-full py-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl flex items-center justify-center gap-2">
+              <Check size={20} className="text-yellow-400" />
+              <span className="text-yellow-400 font-bold">Inscrição solicitada, aguardando pagamento!</span>
             </div>
           )}
 

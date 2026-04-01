@@ -42,7 +42,7 @@ export default function Registrations() {
 
   useEffect(() => {
     if (isError) {
-      setLocation('/admin');
+      setLocation('/admin-home');
     }
   }, [isError, setLocation]);
 
