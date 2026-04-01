@@ -12,7 +12,7 @@ import {
   type Belt,
 } from '@shared/schema.js';
 import { eq, and, sql } from 'drizzle-orm';
-import { sendWelcomeEmail, sendPasswordResetEmail, sendRegistrationConfirmedEmail, sendPaymentConfirmedEmail } from './email.js';
+import { sendWelcomeEmail, sendPasswordResetEmail, sendRegistrationConfirmedEmail, sendPaymentConfirmedEmail, sendAccountDeletedEmail } from './email.js';
 
 function sha256(str: string): Buffer {
   return crypto.createHash('sha256').update(str).digest();
@@ -424,6 +424,8 @@ export function registerRoutes(app: Express) {
       const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.id, id));
       if (!existing) return res.status(404).json({ error: 'Usuário não encontrado' });
 
+      const [userToDelete] = await db.select({ email: users.email, student_name: users.student_name }).from(users).where(eq(users.id, id));
+
       // Delete exam registrations where user is the registrant
       await db.delete(examRegistrations).where(eq(examRegistrations.user_id, id));
 
@@ -432,6 +434,8 @@ export function registerRoutes(app: Express) {
       await db.delete(senseiEvaluations).where(eq(senseiEvaluations.sensei_id, id));
 
       await db.delete(users).where(eq(users.id, id));
+
+      if (userToDelete) sendAccountDeletedEmail(userToDelete.email, userToDelete.student_name);
 
       return res.json({ ok: true });
     } catch (err) {

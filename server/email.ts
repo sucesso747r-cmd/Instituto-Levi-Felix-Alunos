@@ -134,3 +134,27 @@ export async function sendPaymentConfirmedEmail(
     console.error("[email] sendPaymentConfirmedEmail failed:", err);
   }
 }
+
+export async function sendAccountDeletedEmail(
+  to: string,
+  studentName: string
+): Promise<void> {
+  try {
+    await resend.emails.send({
+      from: FROM,
+      to,
+      subject: "Sua conta foi removida — Instituto Levi Felix",
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #1a1a1a;">
+          <h1 style="color: #b91c1c; font-size: 24px; margin-bottom: 16px;">Conta removida</h1>
+          <p style="font-size: 15px; line-height: 1.6;">Olá, <strong>${studentName}</strong>.</p>
+          <p style="font-size: 15px; line-height: 1.6;">Informamos que sua conta no Instituto Levi Felix foi removida do sistema.</p>
+          <p style="font-size: 15px; line-height: 1.6;">Se você acha que foi excluído por engano, entre em contato com a recepção do Instituto para esclarecimentos.</p>
+          <p style="font-size: 14px; line-height: 1.6; color: #555;">Atenciosamente,<br/>Instituto Levi Felix</p>
+        </div>
+      `,
+    });
+  } catch (err) {
+    console.error("[email] sendAccountDeletedEmail failed:", err);
+  }
+}
