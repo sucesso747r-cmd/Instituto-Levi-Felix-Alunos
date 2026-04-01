@@ -40,6 +40,7 @@ export default function App() {
             <SenseiDashboard />
           </ProtectedRoute>
         </Route>
+        <Route path="/admin" component={Admin} />
         <Route path="/admin-home" component={Admin} />
         <Route path="/admin/registrations" component={Registrations} />
         <Route path="/admin/students" component={Students} />
