@@ -36,7 +36,7 @@ export default function Admin() {
   const qc = useQueryClient();
 
   // Auth state
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(() => sessionStorage.getItem('adminAuth') === 'true');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -211,6 +211,7 @@ export default function Admin() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password }),
       });
+      sessionStorage.setItem('adminAuth', 'true');
       setIsLoggedIn(true);
       setError('');
     } catch (err) {
@@ -224,6 +225,7 @@ export default function Admin() {
     } catch {
       // ignore
     }
+    sessionStorage.removeItem('adminAuth');
     setIsLoggedIn(false);
   };
 
