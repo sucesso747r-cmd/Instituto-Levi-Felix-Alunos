@@ -35,7 +35,7 @@ export async function apiRequest(input: RequestInfo, init?: RequestInit): Promis
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({ message: response.statusText }));
-    throw new Error(body.message ?? response.statusText);
+    throw new Error(body.message ?? body.error ?? response.statusText);
   }
 
   return response;
