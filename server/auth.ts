@@ -142,8 +142,11 @@ export function setupAuth(app: Express) {
         .from(users)
         .where(eq(users.email, email.toLowerCase().trim()));
 
-      // Always return success to avoid user enumeration
-      if (!user) return res.json({ ok: true });
+      if (!user) {
+        return res.status(404).json({
+          error: 'E-mail não cadastrado. Solicite seu cadastro.',
+        });
+      }
 
       const token = crypto.randomBytes(32).toString('hex');
       const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
