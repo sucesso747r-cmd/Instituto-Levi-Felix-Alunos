@@ -342,7 +342,7 @@ export default function Students() {
             <Users className="text-primary" size={24} />
           </div>
           <div>
-            <h2 className="text-xl font-bold uppercase tracking-tight">Atribuições do Período Ativo</h2>
+            <h2 className="text-xl font-bold uppercase tracking-tight">Atribuir Sensei para o Aluno(a)</h2>
             <p className="text-white/40 text-[10px] uppercase font-bold tracking-widest">
               {activePeriod ? (() => {
                 const [year, month, day] = activePeriod.exam_date.split('-');
