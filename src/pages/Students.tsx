@@ -256,12 +256,14 @@ export default function Students() {
                         <option key={b} value={b}>{b}</option>
                       ))}
                     </select>
-                    <input
-                      value={editClassGroup}
-                      onChange={(e) => setEditClassGroup(e.target.value)}
-                      placeholder="Turma (opcional)"
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-primary/40"
-                    />
+                    {!editIsSensei && (
+                      <input
+                        value={editClassGroup}
+                        onChange={(e) => setEditClassGroup(e.target.value)}
+                        placeholder="Turma (opcional)"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-primary/40"
+                      />
+                    )}
                     <button
                       type="button"
                       onClick={() => setEditIsSensei((v) => !v)}
