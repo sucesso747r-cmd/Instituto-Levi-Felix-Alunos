@@ -463,7 +463,7 @@ export default function Admin() {
               </div>
             </div>
             <button type="button" onClick={() => { setShowNewUserForm(p => !p); if (showNewUserForm) resetNewUserForm(); }} className={`flex items-center gap-1.5 text-xs font-bold py-2 px-3 rounded-xl border transition-all ${showNewUserForm ? 'bg-white/10 border-white/20 text-white/70' : 'bg-primary/10 border-primary/20 text-primary hover:bg-primary/20'}`}>
-              {showNewUserForm ? <><X size={14}/> Cancelar</> : <><UserPlus size={14}/> Cadastrar Novo Aluno</>}
+              {showNewUserForm ? <><X size={14}/> Cancelar</> : <><UserPlus size={14}/> Cadastrar Novo Aluno/Sensei</>}
             </button>
           </div>
 
@@ -479,7 +479,7 @@ export default function Admin() {
                   <div className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5"><p className="text-sm font-bold">É Sensei?</p><button type="button" onClick={()=>setNewIsSensei(p=>!p)} className={`transition-colors ${newIsSensei?'text-primary':'text-white/20'}`}>{newIsSensei?<ToggleRight size={36}/>:<ToggleLeft size={36}/>}</button></div>
                   {createUserError && <p className="text-red-400 text-xs font-bold">{createUserError}</p>}
                   <button type="submit" disabled={createUserMutation.isPending} className="w-full bg-primary hover:bg-red-700 disabled:opacity-50 text-white font-bold py-3 rounded-xl transition-all active:scale-[0.98] flex items-center justify-center gap-2 text-sm">
-                    {createUserSuccess ? <><CheckCircle2 size={18}/> Aluno Cadastrado!</> : createUserMutation.isPending ? 'Cadastrando...' : <><UserPlus size={16}/> Cadastrar Aluno</>}
+                    {createUserSuccess ? <><CheckCircle2 size={18}/> Aluno Cadastrado!</> : createUserMutation.isPending ? 'Cadastrando...' : <><UserPlus size={16}/> Cadastrar Aluno/Sensei</>}
                   </button>
                 </div>
               </motion.form>
@@ -495,9 +495,9 @@ export default function Admin() {
               <Users className="text-primary" size={24} />
             </div>
             <div className="flex-1 text-left">
-              <h3 className="font-bold uppercase tracking-tight">Gerenciar Alunos</h3>
+              <h3 className="font-bold uppercase tracking-tight">Gerenciar Alunos/Senseis</h3>
               <p className="text-white/40 text-[10px] uppercase font-bold tracking-widest">
-                Ver e editar alunos cadastrados
+                Ver e editar alunos/senseis cadastrados
               </p>
             </div>
             <ArrowRight size={20} className="text-white/20 group-hover:text-white transition-colors" />
