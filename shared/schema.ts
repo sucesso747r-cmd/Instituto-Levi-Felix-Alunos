@@ -79,9 +79,27 @@ export const senseiEvaluations = pgTable(
       .references(() => examPeriods.id),
     sensei_id: integer('sensei_id')
       .notNull()
-      .references(() => users.id),
+      .references(() => users.id, { onDelete: 'cascade' }),
     is_eligible: boolean('is_eligible').notNull(),
     evaluated_at: timestamp('evaluated_at').notNull().defaultNow(),
+  },
+  (t) => [unique().on(t.user_id, t.exam_period_id)],
+);
+
+export const studentSenseiAssignments = pgTable(
+  'student_sensei_assignments',
+  {
+    id: serial('id').primaryKey(),
+    user_id: integer('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    sensei_id: integer('sensei_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    exam_period_id: integer('exam_period_id')
+      .notNull()
+      .references(() => examPeriods.id, { onDelete: 'cascade' }),
+    assigned_at: timestamp('assigned_at').notNull().defaultNow(),
   },
   (t) => [unique().on(t.user_id, t.exam_period_id)],
 );
@@ -122,3 +140,4 @@ export const insertExamPeriodSchema = createInsertSchema(examPeriods);
 export const insertSenseiEvaluationSchema = createInsertSchema(senseiEvaluations);
 export const insertExamRegistrationSchema = createInsertSchema(examRegistrations);
 export const insertPasswordResetTokenSchema = createInsertSchema(passwordResetTokens);
+export const insertStudentSenseiAssignmentSchema = createInsertSchema(studentSenseiAssignments);

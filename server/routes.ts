@@ -8,10 +8,11 @@ import {
   examPeriods,
   senseiEvaluations,
   examRegistrations,
+  studentSenseiAssignments,
   getNextBelt,
   type Belt,
 } from '@shared/schema.js';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, inArray, sql } from 'drizzle-orm';
 import { sendWelcomeEmail, sendPasswordResetEmail, sendRegistrationConfirmedEmail, sendPaymentConfirmedEmail, sendAccountDeletedEmail } from './email.js';
 
 function sha256(str: string): Buffer {
@@ -144,25 +145,34 @@ export function registerRoutes(app: Express) {
   // GET /api/sensei/students
   app.get('/api/sensei/students', isAuthenticated, isSensei, async (req, res) => {
     try {
+      const senseiId = req.user!.id;
+
       const [period] = await db
         .select()
         .from(examPeriods)
         .where(eq(examPeriods.active, true))
         .limit(1);
 
-      const allStudents = await db
+      if (!period) return res.json([]);
+
+      const assignments = await db
+        .select()
+        .from(studentSenseiAssignments)
+        .where(
+          and(
+            eq(studentSenseiAssignments.sensei_id, senseiId),
+            eq(studentSenseiAssignments.exam_period_id, period.id),
+          ),
+        );
+
+      if (assignments.length === 0) return res.json([]);
+
+      const assignedUserIds = assignments.map((a) => a.user_id);
+
+      const assignedStudents = await db
         .select()
         .from(users)
-        .where(eq(users.is_sensei, false));
-
-      if (!period) {
-        const result = allStudents.map(({ password_hash: _, ...u }) => ({
-          user: u,
-          evaluation: null,
-          registration: null,
-        }));
-        return res.json(result);
-      }
+        .where(inArray(users.id, assignedUserIds));
 
       const evaluations = await db
         .select()
@@ -174,7 +184,7 @@ export function registerRoutes(app: Express) {
         .from(examRegistrations)
         .where(eq(examRegistrations.exam_period_id, period.id));
 
-      const result = allStudents.map(({ password_hash: _, ...u }) => ({
+      const result = assignedStudents.map(({ password_hash: _, ...u }) => ({
         user: u,
         evaluation: evaluations.find((e) => e.user_id === u.id) ?? null,
         registration: registrations.find((r) => r.user_id === u.id) ?? null,
@@ -202,6 +212,22 @@ export function registerRoutes(app: Express) {
         .limit(1);
 
       if (!period) return res.status(400).json({ error: 'Nenhum período de exame ativo' });
+
+      const [assignment] = await db
+        .select()
+        .from(studentSenseiAssignments)
+        .where(
+          and(
+            eq(studentSenseiAssignments.user_id, userId),
+            eq(studentSenseiAssignments.exam_period_id, period.id),
+            eq(studentSenseiAssignments.sensei_id, req.user!.id),
+          ),
+        )
+        .limit(1);
+
+      if (!assignment) {
+        return res.status(403).json({ error: 'Este aluno não está atribuído a você neste período' });
+      }
 
       const [evaluation] = await db
         .insert(senseiEvaluations)
@@ -440,6 +466,92 @@ export function registerRoutes(app: Express) {
       return res.json({ ok: true });
     } catch (err) {
       console.error('DELETE /api/admin/users/:id error:', err);
+      return res.status(500).json({ error: 'Erro interno' });
+    }
+  });
+
+  // GET /api/admin/assignments
+  app.get('/api/admin/assignments', isAdminSession, async (req, res) => {
+    try {
+      let periodId: number | undefined = req.query.periodId ? Number(req.query.periodId) : undefined;
+
+      if (!periodId) {
+        const [period] = await db
+          .select()
+          .from(examPeriods)
+          .where(eq(examPeriods.active, true))
+          .limit(1);
+        if (!period) return res.json([]);
+        periodId = period.id;
+      }
+
+      const assignments = await db
+        .select({
+          assignment: studentSenseiAssignments,
+          student: {
+            id: users.id,
+            email: users.email,
+            student_name: users.student_name,
+            current_belt: users.current_belt,
+            class_group: users.class_group,
+          },
+        })
+        .from(studentSenseiAssignments)
+        .innerJoin(users, eq(studentSenseiAssignments.user_id, users.id))
+        .where(eq(studentSenseiAssignments.exam_period_id, periodId));
+
+      return res.json(assignments);
+    } catch (err) {
+      console.error('GET /api/admin/assignments error:', err);
+      return res.status(500).json({ error: 'Erro interno' });
+    }
+  });
+
+  // POST /api/admin/assignments
+  app.post('/api/admin/assignments', isAdminSession, async (req, res) => {
+    try {
+      const { userId, senseiId, examPeriodId } = req.body as {
+        userId: number;
+        senseiId: number;
+        examPeriodId: number;
+      };
+
+      if (!userId || !senseiId || !examPeriodId) {
+        return res.status(400).json({ error: 'userId, senseiId e examPeriodId são obrigatórios' });
+      }
+
+      const [assignment] = await db
+        .insert(studentSenseiAssignments)
+        .values({ user_id: userId, sensei_id: senseiId, exam_period_id: examPeriodId })
+        .onConflictDoUpdate({
+          target: [studentSenseiAssignments.user_id, studentSenseiAssignments.exam_period_id],
+          set: { sensei_id: senseiId },
+        })
+        .returning();
+
+      return res.status(201).json(assignment);
+    } catch (err) {
+      console.error('POST /api/admin/assignments error:', err);
+      return res.status(500).json({ error: 'Erro interno' });
+    }
+  });
+
+  // DELETE /api/admin/assignments/:id
+  app.delete('/api/admin/assignments/:id', isAdminSession, async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: 'ID inválido' });
+
+      const [deleted] = await db
+        .delete(studentSenseiAssignments)
+        .where(eq(studentSenseiAssignments.id, id))
+        .returning();
+
+      if (!deleted) return res.status(404).json({ error: 'Atribuição não encontrada' });
+
+      return res.json({ ok: true });
+    } catch (err) {
+      console.error('DELETE /api/admin/assignments/:id error:', err);
       return res.status(500).json({ error: 'Erro interno' });
     }
   });
