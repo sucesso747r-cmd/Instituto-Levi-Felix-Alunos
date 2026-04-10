@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'motion/react';
-import { ArrowLeft, User, Lock, CheckCircle2, ShieldAlert, Pencil, Trash2, Save, X, ToggleRight, ToggleLeft } from 'lucide-react';
+import { ArrowLeft, User, Users, Lock, CheckCircle2, ShieldAlert, Pencil, Trash2, Save, X, ToggleRight, ToggleLeft } from 'lucide-react';
 import Layout from '../components/Layout';
 import { apiRequest } from '../lib/queryClient';
 import { BELT_SEQUENCE } from '../../shared/schema';
@@ -15,6 +15,13 @@ interface AdminUser {
   class_group: string;
   is_sensei: boolean;
 }
+
+interface Assignment {
+  assignment: { id: number; user_id: number; sensei_id: number; exam_period_id: number };
+  student: { id: number; email: string; student_name: string; current_belt: string; class_group: string };
+}
+
+interface ExamPeriod { id: number; active: boolean }
 
 export default function Students() {
   const [, setLocation] = useLocation();
@@ -94,6 +101,45 @@ export default function Students() {
     onSuccess: () => {
       setConfirmDeleteId(null);
       qc.invalidateQueries({ queryKey: ['admin', 'users'] });
+    },
+  });
+
+  const { data: activePeriod = null } = useQuery<ExamPeriod | null>({
+    queryKey: ['admin', 'exam-period'],
+    queryFn: async () => {
+      const res = await apiRequest('/api/admin/exam-period');
+      return res.json();
+    },
+  });
+
+  const { data: assignments = [] } = useQuery<Assignment[]>({
+    queryKey: ['admin', 'assignments'],
+    queryFn: async () => {
+      const res = await apiRequest('/api/admin/assignments');
+      return res.json();
+    },
+  });
+
+  const assignMutation = useMutation({
+    mutationFn: async ({ userId, senseiId }: { userId: number; senseiId: number }) => {
+      const res = await apiRequest('/api/admin/assignments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, senseiId, examPeriodId: activePeriod!.id }),
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'assignments'] });
+    },
+  });
+
+  const removeAssignmentMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest(`/api/admin/assignments/${id}`, { method: 'DELETE' });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'assignments'] });
     },
   });
 
@@ -281,6 +327,77 @@ export default function Students() {
                 )}
               </div>
             ))
+          )}
+        </div>
+        {/* ── Atribuições do Período Ativo ── */}
+        <div className="flex items-center gap-3 mb-4 mt-2">
+          <div className="p-2 bg-primary/10 rounded-lg border border-primary/20">
+            <Users className="text-primary" size={24} />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold uppercase tracking-tight">Atribuições do Período Ativo</h2>
+            <p className="text-white/40 text-[10px] uppercase font-bold tracking-widest">
+              {activePeriod ? `Período #${activePeriod.id}` : 'Nenhum período ativo'}
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-secondary/30 border border-white/10 rounded-3xl p-6 space-y-4">
+          {!activePeriod ? (
+            <p className="text-white/40 text-sm text-center py-4">Nenhum período de exame ativo.</p>
+          ) : users.filter((u) => !u.is_sensei).length === 0 ? (
+            <p className="text-white/40 text-sm text-center py-4">Nenhum aluno cadastrado.</p>
+          ) : (
+            users.filter((u) => !u.is_sensei).map((student) => {
+              const found = assignments.find((a) => a.assignment.user_id === student.id);
+              const senseis = users.filter((u) => u.is_sensei);
+
+              return (
+                <div key={student.id} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5 gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <User size={14} className="text-white/40 shrink-0" />
+                      <p className="font-bold text-sm truncate">{student.student_name}</p>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${beltPillClass(student.current_belt)}`}>
+                        {student.current_belt}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    {!found && (
+                      <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-white/5 text-white/30 border border-white/10">
+                        Sem sensei
+                      </span>
+                    )}
+                    <select
+                      value={found?.assignment.sensei_id ?? ''}
+                      onChange={(e) => {
+                        const senseiId = Number(e.target.value);
+                        if (senseiId) assignMutation.mutate({ userId: student.id, senseiId });
+                      }}
+                      disabled={assignMutation.isPending}
+                      className="bg-secondary border border-white/10 rounded-xl px-2 py-1.5 text-xs text-white focus:outline-none focus:border-primary/40 disabled:opacity-50"
+                    >
+                      <option value="">Selecionar sensei</option>
+                      {senseis.map((s) => (
+                        <option key={s.id} value={s.id}>{s.student_name}</option>
+                      ))}
+                    </select>
+                    {found && (
+                      <button
+                        type="button"
+                        onClick={() => removeAssignmentMutation.mutate(found.assignment.id)}
+                        disabled={removeAssignmentMutation.isPending}
+                        className="bg-white/5 hover:bg-red-500/20 border border-white/10 hover:border-red-500/30 text-white/60 hover:text-red-400 p-1.5 rounded-xl transition-all active:scale-[0.98] disabled:opacity-50"
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })
           )}
         </div>
       </motion.div>
