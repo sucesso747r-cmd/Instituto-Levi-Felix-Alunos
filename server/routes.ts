@@ -513,7 +513,39 @@ export function registerRoutes(app: Express) {
           .from(examPeriods)
           .where(eq(examPeriods.active, true))
           .limit(1);
-        if (!period) return res.json([]);
+        if (!period) {
+          const maxPeriodPerUser = db
+            .select({
+              user_id: studentSenseiAssignments.user_id,
+              max_period_id: sql<number>`max(${studentSenseiAssignments.exam_period_id})`.as('max_period_id'),
+            })
+            .from(studentSenseiAssignments)
+            .groupBy(studentSenseiAssignments.user_id)
+            .as('max_period_per_user');
+
+          const latestAssignments = await db
+            .select({
+              assignment: studentSenseiAssignments,
+              student: {
+                id: users.id,
+                email: users.email,
+                student_name: users.student_name,
+                current_belt: users.current_belt,
+                class_group: users.class_group,
+              },
+            })
+            .from(studentSenseiAssignments)
+            .innerJoin(users, eq(studentSenseiAssignments.user_id, users.id))
+            .innerJoin(
+              maxPeriodPerUser,
+              and(
+                eq(studentSenseiAssignments.user_id, maxPeriodPerUser.user_id),
+                eq(studentSenseiAssignments.exam_period_id, maxPeriodPerUser.max_period_id),
+              ),
+            );
+
+          return res.json(latestAssignments);
+        }
         periodId = period.id;
       }
 
