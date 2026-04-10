@@ -201,6 +201,11 @@ export default function Students() {
                       </span>
                     </div>
                     <p className="text-white/40 text-xs ml-5">{u.email}</p>
+                    {!u.is_sensei && (() => {
+                      const asgn = assignments.find((a) => a.assignment.user_id === u.id);
+                      const senseiName = asgn ? users.find((s) => s.id === asgn.assignment.sensei_id)?.student_name ?? '—' : '—';
+                      return <p className="text-white/40 text-xs ml-5">Sensei: {senseiName}</p>;
+                    })()}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <button
