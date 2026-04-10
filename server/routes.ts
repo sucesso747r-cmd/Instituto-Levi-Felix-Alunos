@@ -308,6 +308,12 @@ export function registerRoutes(app: Express) {
         pixKey: string;
       };
 
+      const [prevPeriod] = await db
+        .select({ id: examPeriods.id })
+        .from(examPeriods)
+        .where(eq(examPeriods.active, true))
+        .limit(1);
+
       // @ts-expect-error Drizzle 0.39 excludes notNull+default columns from update set type
       await db.update(examPeriods).set({ active: false }).where(eq(examPeriods.active, true));
 
@@ -322,6 +328,32 @@ export function registerRoutes(app: Express) {
           pix_key: pixKey ?? '19998098584',
         })
         .returning();
+
+      if (prevPeriod) {
+        const prevAssignments = await db
+          .select({
+            user_id: studentSenseiAssignments.user_id,
+            sensei_id: studentSenseiAssignments.sensei_id,
+          })
+          .from(studentSenseiAssignments)
+          .where(eq(studentSenseiAssignments.exam_period_id, prevPeriod.id));
+
+        if (prevAssignments.length > 0) {
+          await db
+            .insert(studentSenseiAssignments)
+            .values(
+              prevAssignments.map((a) => ({
+                user_id: a.user_id,
+                sensei_id: a.sensei_id,
+                exam_period_id: period.id,
+              })),
+            )
+            .onConflictDoUpdate({
+              target: [studentSenseiAssignments.user_id, studentSenseiAssignments.exam_period_id],
+              set: { sensei_id: sql`excluded.sensei_id` },
+            });
+        }
+      }
 
       return res.status(201).json(period);
     } catch (err) {
