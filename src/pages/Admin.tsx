@@ -102,6 +102,8 @@ export default function Admin() {
       setFormDeadline(examPeriod.registration_deadline ?? '');
       setFormPrice(examPeriod.exam_price ?? '');
       setFormPixKey(examPeriod.pix_key ?? '');
+    } else {
+      setFormActive(false);
     }
   }, [examPeriod]);
 
