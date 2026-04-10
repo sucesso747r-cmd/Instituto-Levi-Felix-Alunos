@@ -21,7 +21,7 @@ interface Assignment {
   student: { id: number; email: string; student_name: string; current_belt: string; class_group: string };
 }
 
-interface ExamPeriod { id: number; active: boolean }
+interface ExamPeriod { id: number; active: boolean; exam_date: string }
 
 export default function Students() {
   const [, setLocation] = useLocation();
@@ -339,7 +339,10 @@ export default function Students() {
           <div>
             <h2 className="text-xl font-bold uppercase tracking-tight">Atribuições do Período Ativo</h2>
             <p className="text-white/40 text-[10px] uppercase font-bold tracking-widest">
-              {activePeriod ? `Período #${activePeriod.id}` : 'Nenhum período ativo'}
+              {activePeriod ? (() => {
+                const [year, month, day] = activePeriod.exam_date.split('-');
+                return `Exame de ${day}/${month}/${year}`;
+              })() : 'Nenhum período ativo'}
             </p>
           </div>
         </div>
