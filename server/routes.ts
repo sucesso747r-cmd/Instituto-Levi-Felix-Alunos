@@ -588,6 +588,33 @@ export function registerRoutes(app: Express) {
     }
   });
 
+  // GET /api/admin/evaluations
+  app.get('/api/admin/evaluations', isAdminSession, async (req, res) => {
+    try {
+      const [period] = await db
+        .select()
+        .from(examPeriods)
+        .where(eq(examPeriods.active, true))
+        .limit(1);
+
+      if (!period) return res.json([]);
+
+      const evaluations = await db
+        .select({
+          user_id: senseiEvaluations.user_id,
+          sensei_id: senseiEvaluations.sensei_id,
+          is_eligible: senseiEvaluations.is_eligible,
+        })
+        .from(senseiEvaluations)
+        .where(eq(senseiEvaluations.exam_period_id, period.id));
+
+      return res.json(evaluations);
+    } catch (err) {
+      console.error('GET /api/admin/evaluations error:', err);
+      return res.status(500).json({ error: 'Erro interno' });
+    }
+  });
+
   // GET /api/admin/registrations
   app.get('/api/admin/registrations', isAdminSession, async (req, res) => {
     try {

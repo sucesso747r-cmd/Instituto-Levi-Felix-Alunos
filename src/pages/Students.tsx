@@ -23,6 +23,8 @@ interface Assignment {
 
 interface ExamPeriod { id: number; active: boolean; exam_date: string }
 
+interface Evaluation { user_id: number; sensei_id: number; is_eligible: boolean }
+
 export default function Students() {
   const [, setLocation] = useLocation();
   const qc = useQueryClient();
@@ -108,6 +110,14 @@ export default function Students() {
     queryKey: ['admin', 'exam-period'],
     queryFn: async () => {
       const res = await apiRequest('/api/admin/exam-period');
+      return res.json();
+    },
+  });
+
+  const { data: evaluations = [] } = useQuery<Evaluation[]>({
+    queryKey: ['admin', 'evaluations'],
+    queryFn: async () => {
+      const res = await apiRequest('/api/admin/evaluations');
       return res.json();
     },
   });
@@ -204,7 +214,23 @@ export default function Students() {
                     {!u.is_sensei && (() => {
                       const asgn = assignments.find((a) => a.assignment.user_id === u.id);
                       const senseiName = asgn ? users.find((s) => s.id === asgn.assignment.sensei_id)?.student_name ?? '—' : '—';
-                      return <p className="text-white/40 text-xs ml-5">Sensei: {senseiName}</p>;
+                      const evaluation = evaluations.find((e) => e.user_id === u.id);
+                      return (
+                        <>
+                          <p className="text-white/40 text-xs ml-5">Sensei: {senseiName}</p>
+                          {activePeriod && (
+                            evaluation ? (
+                              evaluation.is_eligible ? (
+                                <span className="ml-5 inline-block text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 border border-green-500/30">Apto</span>
+                              ) : (
+                                <span className="ml-5 inline-block text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30">Inapto</span>
+                              )
+                            ) : (
+                              <span className="ml-5 inline-block text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-white/40 border border-white/10">Aguardando avaliação</span>
+                            )
+                          )}
+                        </>
+                      );
                     })()}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
